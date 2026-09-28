@@ -31,7 +31,7 @@ export default function InvoicesAdmin() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <PageHeader eyebrow="Super Admin" title={t('invoices.title')} subtitle={t('invoices.subtitle')} />
+      <PageHeader title={t('invoices.title')} subtitle={t('invoices.subtitle')} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatCard icon={<CheckCircle2 size={20} />} label={t('invoices.paidTotal')} value={totals.PAID?.amount ?? 0} currency tone="green" highlight subtitle={`${totals.PAID?.count ?? 0} facture(s)`} />

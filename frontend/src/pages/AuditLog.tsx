@@ -34,10 +34,17 @@ const methodTone: Record<string, string> = {
   DELETE: 'bg-[#FFE8EB] text-[#C52B45]',
 }
 
-// "PATCH /:id/subscription" -> "subscription"; login events keep their name.
-const readableAction = (entry: AuditEntry) => entry.action.includes(' ')
+// Named events (sign-in, password…) in plain words; other entries are API calls such as "PATCH /:id/subscription".
+const EVENTS: Record<string, { label: string; tone: string; kind: string }> = {
+  LOGIN_SUCCESS: { label: 'Connexion', tone: 'bg-[#E9EFEC] text-[#5A6B65]', kind: 'Accès' },
+  LOGIN_FAILURE: { label: 'Échec de connexion', tone: 'bg-[#FBE3E0] text-[#B8372C]', kind: 'Accès' },
+  PASSWORD_RESET_REQUESTED: { label: 'Code de changement de mot de passe envoyé', tone: 'bg-[#FBEED6] text-[#99600B]', kind: 'Accès' },
+  PASSWORD_RESET: { label: 'Mot de passe changé', tone: 'bg-[#FBEED6] text-[#99600B]', kind: 'Accès' },
+  DEMO_RESET: { label: 'Cabinet de démonstration remis à zéro', tone: 'bg-[#EEE7F8] text-[#6746A8]', kind: 'Démo' },
+}
+const readableAction = (entry: AuditEntry) => EVENTS[entry.action]?.label || (entry.action.includes(' ')
   ? entry.action.split(' ').slice(1).join(' ').replace(/\/:\w+/g, '').replace(/^\//, '') || entry.path
-  : entry.action
+  : entry.action)
 
 export default function AuditLog() {
   const { t } = useTranslation()
@@ -77,7 +84,7 @@ export default function AuditLog() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <PageHeader eyebrow="Super Admin" title={t('audit.title')} subtitle={t('audit.subtitle')} />
+      <PageHeader title={t('audit.title')} subtitle={t('audit.subtitle')} />
 
       <Toolbar className="lg:flex-wrap">
         <SearchInput value={search} onChange={setSearch} placeholder={t('audit.search')} className="lg:w-80" />
@@ -118,7 +125,7 @@ export default function AuditLog() {
                     <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${methodTone[entry.method] || 'bg-[#F0E8FF] text-[#5731B7]'}`}><History size={15} /></span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold text-[#14231E]">{t(`audit.methods.${entry.method}`, entry.method)} · {readableAction(entry)}</p>
+                        <p className="truncate text-sm font-semibold text-[#14231E]">{EVENTS[entry.action] ? readableAction(entry) : `${t(`audit.methods.${entry.method}`, entry.method)} · ${readableAction(entry)}`}</p>
                         <Badge variant={entry.status >= 400 ? 'destructive' : 'success'} className="shrink-0">{entry.status}</Badge>
                       </div>
                       <p className="truncate text-xs text-[#5A6B65]">{who(entry)}{entry.cabinetName ? ` · ${entry.cabinetName}` : ''}</p>
@@ -148,7 +155,7 @@ export default function AuditLog() {
                           {entry.user && <p className="text-xs text-[#5A6B65]">{entry.user.email}</p>}
                         </TableCell>
                         <TableCell>{entry.cabinetName || '—'}</TableCell>
-                        <TableCell><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${methodTone[entry.method] || 'bg-[#F0E8FF] text-[#5731B7]'}`}>{t(`audit.methods.${entry.method}`, entry.method)}</span></TableCell>
+                        <TableCell><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${EVENTS[entry.action]?.tone || methodTone[entry.method] || 'bg-[#EEE7F8] text-[#6746A8]'}`}>{EVENTS[entry.action]?.kind || t(`audit.methods.${entry.method}`, entry.method)}</span></TableCell>
                         <TableCell className="max-w-sm whitespace-normal">
                           <p className="font-medium">{readableAction(entry)}</p>
                           <p className="truncate text-xs text-[#8A9A94]">{entry.path}</p>

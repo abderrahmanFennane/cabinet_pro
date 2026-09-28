@@ -170,24 +170,24 @@ export default function PlansAdmin() {
     }))
   }
 
-  const formatPrice = (value: any) => Number(value || 0).toFixed(2)
+  const formatPrice = (value: any) => Number(value || 0).toLocaleString('fr-FR').replace(/\s/g, ' ')
 
+  // The three features that differ between plans, then how many of the others are included.
   const permissionBadges = (plan: Plan) => {
     const perms = plan.permissions || []
-    if (!perms.length) {
-      return <span className="text-xs text-muted-foreground">Aucune</span>
-    }
-    const shown = perms.slice(0, 3)
-    const remaining = perms.length - shown.length
+    const key: [PermissionKey, string][] = [['DENTAL_TREATMENT_PLAN', 'Plans de traitement'], ['ADVANCED_STATS', 'Stats avancées'], ['MULTI_SPECIALTY', 'Multi-spécialités']]
     return (
-      <div className="flex flex-wrap gap-1">
-        {shown.map(p => (
-          <Badge key={p} variant="secondary">{PERMISSION_LABELS[p] || p}</Badge>
-        ))}
-        {remaining > 0 && <Badge variant="outline">+{remaining}</Badge>}
+      <div className="grid gap-1 text-[0.82rem]">
+        <span className="text-[#5A6B65]">{perms.length} / {PERMISSIONS.length} fonctions</span>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {key.map(([k, label]) => (
+            <span key={k} className={perms.includes(k) ? 'text-[#1E7A45]' : 'text-[#8A9A94] line-through'}>{perms.includes(k) ? '✓' : '✕'} {label}</span>
+          ))}
+        </div>
       </div>
     )
   }
+  const limits = (plan: Plan) => `${plan.maxPractitioners} praticien${plan.maxPractitioners > 1 ? 's' : ''} · ${plan.maxAssistants >= 999 ? 'assistants illimités' : `${plan.maxAssistants} assistant${plan.maxAssistants > 1 ? 's' : ''}`}`
 
   return (
     <div className="mx-auto max-w-8xl space-y-6">
@@ -211,7 +211,6 @@ export default function PlansAdmin() {
         </AlertDialogContent>
       </AlertDialog>
       <PageHeader
-        eyebrow="Super Admin"
         title={t('nav.plans')}
         subtitle="Gérez les offres, les quotas et les permissions incluses."
         actions={<Button size="lg" className="gap-2" onClick={startCreate}><Plus size={18} /> Nouveau plan</Button>}
@@ -255,8 +254,7 @@ export default function PlansAdmin() {
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-[#3F514A]">
                 <Badge variant={plan.isActive ? 'success' : 'destructive'}>{plan.isActive ? t('common.active') : t('common.inactive')}</Badge>
-                <span className="rounded-full bg-[#E9EFEC] px-2.5 py-1">{plan.maxPractitioners} praticien(s)</span>
-                <span className="rounded-full bg-[#E9EFEC] px-2.5 py-1">{plan.maxAssistants} assistant(s)</span>
+                <span className="rounded-full bg-[#E9EFEC] px-2.5 py-1">{limits(plan)}</span>
                 <span className="rounded-full bg-[#E9EFEC] px-2.5 py-1">{plan.monthlyMessages} messages/mois</span>
               </div>
               <div className="rounded-2xl bg-[#F2F5F3] p-2.5">{permissionBadges(plan)}</div>
@@ -299,7 +297,7 @@ export default function PlansAdmin() {
                     <Badge variant={plan.isActive ? 'success' : 'destructive'}>{plan.isActive ? t('common.active') : t('common.inactive')}</Badge>
                   </TableCell>
                   <TableCell className="text-sm text-foreground">
-                    {plan.maxPractitioners} praticien(s) · {plan.maxAssistants} assistant(s)
+                    {limits(plan)}
                   </TableCell>
                   <TableCell>{permissionBadges(plan)}</TableCell>
                   <TableCell className="text-end">
@@ -437,8 +435,7 @@ export default function PlansAdmin() {
             <Card>
               <CardHeader><CardTitle className="text-base">Limites</CardTitle></CardHeader>
               <CardContent className="text-sm text-foreground">
-                <div>{viewing?.maxPractitioners} praticien(s)</div>
-                <div>{viewing?.maxAssistants} assistant(s)</div>
+                <div>{viewing ? limits(viewing) : null}</div>
               </CardContent>
             </Card>
             <Card className="sm:col-span-2">

@@ -1,5 +1,4 @@
 import { ReactNode } from 'react'
-import { Card, CardContent } from '../ui/card'
 import { cn, formatCurrency } from '../../lib/utils'
 import { Badge } from '../ui/badge'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
@@ -63,40 +62,22 @@ export function StatCard({
     )
   }
 
-  const isPrimaryMetric = highlight ?? (label === 'Chiffre d\'affaires' || label === 'Chiffre d\'affaires global')
+  // Plain figure card, same as the rest of the app: label, value, one line of context.
+  // The tone only colours the small icon, so warnings stay recognisable without decoration.
   const toneStyle = tone ? tones[tone] : null
-
   return (
-    <Card className={cn(
-      'relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-28px_rgba(27,89,180,0.55)]',
-      isPrimaryMetric && 'border-[#DCEEE7] bg-gradient-to-br from-white to-[#F2F7FF]',
-    )}>
-      {toneStyle && <span aria-hidden="true" className={cn('absolute -end-8 -top-8 h-24 w-24 rounded-full opacity-40', toneStyle.soft)} />}
-      <CardContent className="relative p-4 sm:p-5">
-        <div className="flex flex-col items-start gap-2.5 sm:flex-row sm:gap-3">
-          <span className={cn(
-            'relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-white shadow-[0_10px_20px_-14px_rgba(27,89,180,0.7)] sm:h-12 sm:w-12',
-            toneStyle ? toneStyle.chip : cn(iconBg, iconColor),
-          )}>
-            {icon}
-            {toneStyle && <i aria-hidden="true" className={cn('absolute -end-1 top-0 h-2 w-2 rounded-full', toneStyle.dot)} />}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="line-clamp-2 text-xs font-semibold leading-snug text-[#5A6B65] sm:truncate sm:text-sm">{label}</p>
-            <p className={cn(
-              'mt-1 break-words font-bold leading-tight tracking-[-0.04em] text-[#14231E]',
-              isPrimaryMetric ? 'text-xl sm:text-3xl' : 'text-lg sm:text-2xl',
-            )}>{displayValue}</p>
-          </div>
+    <div className="grid gap-0.5 rounded-[14px] border border-[#D8E1DD] bg-white px-4 py-3.5">
+      <span className="flex items-center gap-2 text-[0.86rem] text-[#5A6B65]">
+        <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-md [&>svg]:h-3.5 [&>svg]:w-3.5', toneStyle ? toneStyle.soft : cn(iconBg, iconColor))}>{icon}</span>
+        <span className="truncate">{label}</span>
+      </span>
+      <b className={cn('break-words font-extrabold tabular-nums tracking-[-0.02em] text-[#14231E]', highlight ? 'text-[1.6rem]' : 'text-[1.4rem]')}>{displayValue}</b>
+      {(deltaBadge || subtitle) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {deltaBadge}
+          {subtitle && <p className="text-xs text-[#5A6B65]">{subtitle}</p>}
         </div>
-
-        {(deltaBadge || subtitle) && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {deltaBadge}
-            {subtitle && <p className="text-xs text-[#5A6B65]">{subtitle}</p>}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
 }

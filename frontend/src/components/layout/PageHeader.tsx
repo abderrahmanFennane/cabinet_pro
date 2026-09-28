@@ -55,10 +55,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, action, tone = 'blue', className }: EmptyStateProps) {
   return (
     <div className={cn('flex flex-col items-center justify-center px-4 py-12 text-center', className)}>
-      <span className={cn('relative flex h-16 w-16 items-center justify-center rounded-full border-4 border-white shadow-[0_12px_24px_-18px_rgba(18,112,90,0.7)]', tones[tone].chip)}>
-        {icon}
-        <i aria-hidden="true" className={cn('absolute -right-2 top-0 h-2 w-2 rounded-full', tones[tone].dot)} />
-      </span>
+      <span className={cn('flex h-12 w-12 items-center justify-center rounded-xl', tones[tone].soft)}>{icon}</span>
       <p className="mt-4 font-semibold text-[#14231E]">{title}</p>
       {description && <p className="mt-1 max-w-sm text-sm text-[#5A6B65]">{description}</p>}
       {action && <div className="mt-5">{action}</div>}

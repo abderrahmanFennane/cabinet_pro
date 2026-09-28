@@ -96,7 +96,7 @@ export default function MessagesAdmin() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <PageHeader eyebrow="Super Admin" title={t('messagesPage.title')} subtitle={t('messagesPage.subtitle')} />
+      <PageHeader title={t('messagesPage.title')} subtitle={t('messagesPage.subtitle')} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Card>

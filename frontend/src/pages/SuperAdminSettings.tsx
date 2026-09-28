@@ -52,7 +52,7 @@ export default function SuperAdminSettings() {
 
   return (
     <div className="space-y-6 no-print max-w-5xl mx-auto">
-      <PageHeader eyebrow="Super Admin" title={t('nav.settings')} subtitle="Branding global (Super Admin)" />
+      <PageHeader title={t('nav.settings')} subtitle="Nom, logo et coordonnées affichés aux cabinets" />
 
       <Card>
         <CardHeader>
