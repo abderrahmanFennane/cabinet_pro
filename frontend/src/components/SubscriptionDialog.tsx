@@ -77,7 +77,7 @@ export function SubscriptionDialog({ cabinet, onOpenChange }: { cabinet: Subscri
     }),
     onSuccess: () => {
       toast({ title: t('subscription.saved'), variant: 'success' })
-      for (const key of ['all-cabinets', 'saas-metrics', 'superadmin-dashboard', 'subscription-alerts', 'admin-invoices']) queryClient.invalidateQueries({ queryKey: [key] })
+      for (const key of ['all-cabinets', 'saas-metrics', 'superadmin-dashboard', 'subscription-alerts', 'admin-invoices', 'cabinet', 'subscription-history']) queryClient.invalidateQueries({ queryKey: [key] })
       onOpenChange(false)
     },
     onError: (err: any) => toast({ title: t('common.error'), description: err.response?.data?.error || err.response?.data?.message, variant: 'destructive' }),

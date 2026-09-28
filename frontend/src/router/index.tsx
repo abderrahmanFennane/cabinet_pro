@@ -17,6 +17,7 @@ const Settings = lazy(pages.Settings)
 const Users = lazy(pages.Users)
 const Pricing = lazy(pages.Pricing)
 const CabinetList = lazy(pages.CabinetList)
+const CabinetDetail = lazy(pages.CabinetDetail)
 const PlansAdmin = lazy(pages.PlansAdmin)
 const SpecialtiesAdmin = lazy(pages.SpecialtiesAdmin)
 const SuperAdminSettings = lazy(pages.SuperAdminSettings)
@@ -92,6 +93,7 @@ export default function AppRouter() {
         <Route path="pricing" element={<ProtectedRoute roles={[Role.OWNER]} permissions={['MANAGE_SUBSCRIPTION']}><Pricing /></ProtectedRoute>} />
 
         <Route path="cabinets" element={platform(<CabinetList />)} />
+        <Route path="cabinets/:id" element={platform(<CabinetDetail />)} />
         <Route path="users" element={platform(<Users />)} />
         <Route path="plans" element={platform(<PlansAdmin />)} />
         <Route path="specialties" element={platform(<SpecialtiesAdmin />)} />

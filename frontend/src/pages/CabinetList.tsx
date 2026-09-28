@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Building2, CalendarClock, Eye, MessageCircle, MessageSquareText, MoreHorizontal, Plus, RotateCcw, Search, ShieldCheck, Trash2, Users } from 'lucide-react'
+import { Building2, CalendarClock, Eye, MessageCircle, MessageSquareText, MoreHorizontal, Plus, RotateCcw, Search, ShieldCheck, Trash2, Users, Wand2 } from 'lucide-react'
+import CredentialsDialog, { Credentials, generatePassword } from '../components/CredentialsDialog'
 import api from '../lib/api'
 import { apiError } from '../lib/hooks'
 import { cn, formatCurrency, formatDateFR, formatDateTimeFR } from '../lib/utils'
@@ -40,7 +41,7 @@ const relative = (date: string | null) => {
   return days === 0 ? 'aujourd’hui' : days > 0 ? `dans ${days} j` : `il y a ${-days} j`
 }
 
-const emptyForm = { name: '', specialty: 'DENTISTRY' as Specialty, city: '', phone: '', email: '', plan: '', ownerFirstName: '', ownerLastName: '', ownerEmail: '', ownerPhone: '', ownerPassword: '' }
+const emptyForm = { name: '', specialty: 'DENTISTRY' as Specialty, city: '', phone: '', email: '', plan: '', ownerTitle: 'Dr', ownerFirstName: '', ownerLastName: '', ownerEmail: '', ownerPhone: '', ownerPassword: '' }
 
 /** F-SA-01: cabinets, their specialty, plan and quotas. Real cabinets open only with the owner's support grant (F-SA-04). */
 export default function CabinetList() {
@@ -62,12 +63,19 @@ export default function CabinetList() {
     !search || [c.name, c.city, c.email, c.phone, t(`specialty.${c.specialty}`)].some(v => v?.toLowerCase().includes(search.toLowerCase()))), [cabinets, search, t])
 
   const refresh = () => ['all-cabinets', 'saas-metrics', 'subscription-alerts'].forEach(key => queryClient.invalidateQueries({ queryKey: [key] }))
+  const [credentials, setCredentials] = useState<Credentials | null>(null)
+  const [createdId, setCreatedId] = useState<string | null>(null)
   const create = useMutation({
-    mutationFn: () => api.post('/cabinets', {
+    mutationFn: async () => (await api.post('/cabinets', {
       name: form.name, specialty: form.specialty, city: form.city || undefined, phone: form.phone || undefined, email: form.email || null, plan: form.plan,
-      owner: form.ownerEmail ? { email: form.ownerEmail, password: form.ownerPassword, firstName: form.ownerFirstName, lastName: form.ownerLastName, phone: form.ownerPhone || undefined } : undefined,
-    }),
-    onSuccess: () => { toast.success('Cabinet créé et abonnement activé'); setCreating(false); setForm(emptyForm); refresh() },
+      owner: { email: form.ownerEmail, password: form.ownerPassword, firstName: form.ownerFirstName, lastName: form.ownerLastName, title: form.ownerTitle || undefined, phone: form.ownerPhone || undefined },
+    })).data.data as Cabinet,
+    onSuccess: (cabinet) => {
+      toast.success(form.plan === 'TRIAL' ? 'Cabinet créé en essai gratuit' : 'Cabinet créé et abonnement activé')
+      setCredentials({ name: `${form.ownerTitle ? `${form.ownerTitle} ` : ''}${form.ownerFirstName} ${form.ownerLastName}`, email: form.ownerEmail.toLowerCase(), password: form.ownerPassword, phone: form.ownerPhone || form.phone, cabinetName: cabinet.name })
+      setCreatedId(cabinet.id)
+      setCreating(false); setForm(emptyForm); refresh()
+    },
     onError: (err) => toast.error(apiError(err)),
   })
   const toggle = useMutation({
@@ -105,7 +113,7 @@ export default function CabinetList() {
   return (
     <div className="grid gap-5">
       <PageHeader title={t('nav.allCabinets')} subtitle={`${cabinets.filter(c => !c.isDemo).length} cabinet(s)`}
-        actions={<Button onClick={() => { setForm({ ...emptyForm, plan: plans.find(p => p.isActive && p.code !== 'TRIAL')?.code || '' }); setCreating(true) }}><Plus size={17} className="me-1.5" />Nouveau cabinet</Button>} />
+        actions={<Button onClick={() => { setForm({ ...emptyForm, plan: plans.find(p => p.isActive && p.code === 'TRIAL')?.code || '', ownerPassword: generatePassword() }); setCreating(true) }}><Plus size={17} className="me-1.5" />Nouveau cabinet</Button>} />
 
       {metrics && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -149,7 +157,7 @@ export default function CabinetList() {
             <Button size="sm" variant="outline" disabled={resetDemo.isPending} onClick={() => resetDemo.mutate()} title="Efface ce qui a été saisi pendant les démos et recrée des patients fictifs">
               <RotateCcw size={15} className={cn('me-1', resetDemo.isPending && 'animate-spin')} />{resetDemo.isPending ? 'Remise à zéro…' : 'Remettre à zéro'}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate(`/users?cabinetId=${demo.id}`)}><Users size={15} className="me-1" />Comptes de démo</Button>
+            <Button size="sm" variant="outline" onClick={() => navigate(`/cabinets/${demo.id}`)}><Users size={15} className="me-1" />Comptes de démo</Button>
             <Button size="sm" className="bg-[#6746A8] hover:bg-[#553990]" onClick={() => open(demo)}><Eye size={15} className="me-1" />Ouvrir la démo</Button>
           </div>
         </section>
@@ -171,7 +179,11 @@ export default function CabinetList() {
       </div>
 
       <section className="overflow-x-auto rounded-[14px] border border-[#D8E1DD] bg-white">
-        {isLoading ? <p className="p-5 text-sm text-muted-foreground">Chargement…</p> : real.length === 0 ? <p className="p-6 text-center text-[#5A6B65]">Aucun cabinet ne correspond.</p> : (
+        {isLoading ? <p className="p-5 text-sm text-muted-foreground">Chargement…</p> : real.length === 0 ? (
+          cabinets.some(c => !c.isDemo)
+            ? <p className="p-6 text-center text-[#5A6B65]">Aucun cabinet ne correspond.</p>
+            : <p className="p-6 text-center text-[#5A6B65]">Aucun cabinet client pour l’instant. Créez le premier avec « Nouveau cabinet » : le compte du médecin titulaire est créé en même temps.</p>
+        ) : (
           <table className="w-full min-w-[720px] text-[0.9rem]">
             <thead>
               <tr className="text-[0.72rem] uppercase tracking-[0.07em] text-[#5A6B65]">
@@ -184,7 +196,7 @@ export default function CabinetList() {
                 const st = STATUS_LABEL[statusOf(c)]
                 return (
                   <tr key={c.id} className="border-t border-[#D8E1DD] align-middle">
-                    <td className="px-4 py-3"><b className="block font-semibold">{c.name}</b><span className="text-[0.82rem] text-[#5A6B65]">{[c.city, t(`specialty.${c.specialty}`)].filter(Boolean).join(' · ')}</span>
+                    <td className="px-4 py-3"><Link to={`/cabinets/${c.id}`} className="block font-semibold hover:text-primary hover:underline">{c.name}</Link><span className="text-[0.82rem] text-[#5A6B65]">{[c.city, t(`specialty.${c.specialty}`)].filter(Boolean).join(' · ')}</span>
                       {c.supportAccess && <span className="mt-1 flex items-center gap-1 text-[0.78rem] font-semibold text-[#99600B]"><ShieldCheck size={13} />Support autorisé jusqu’au {formatDateTimeFR(c.supportAccess.expiresAt)}</span>}
                     </td>
                     <td className="px-4 py-3">{c.plan}</td>
@@ -198,7 +210,7 @@ export default function CabinetList() {
                           <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Autres actions pour ${c.name}`}><MoreHorizontal size={17} /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-60">
                             <DropdownMenuItem disabled={!canOpen(c)} onClick={() => open(c)}><Eye size={15} className="me-2" />{canOpen(c) ? 'Ouvrir (accès support)' : 'Accès support non autorisé'}</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/users?cabinetId=${c.id}`)}><Users size={15} className="me-2" />Comptes</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/cabinets/${c.id}`)}><Users size={15} className="me-2" />Équipe et informations</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate(`/messages?cabinet=${c.id}`)}><MessageSquareText size={15} className="me-2" />Envoyer un message</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => toggle.mutate(c)}>{c.isActive === false ? 'Réactiver' : 'Suspendre'}</DropdownMenuItem>
@@ -217,25 +229,43 @@ export default function CabinetList() {
 
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent className="sm:max-w-2xl">
-          <DialogHeader><DialogTitle>Nouveau cabinet</DialogTitle><DialogDescription>Le catalogue d’actes par défaut de la spécialité est copié dans le cabinet.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Nouveau cabinet</DialogTitle><DialogDescription>Le cabinet et le compte de son médecin titulaire sont créés ensemble. Le catalogue d’actes de la spécialité est copié automatiquement.</DialogDescription></DialogHeader>
           <form className="grid gap-3 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); create.mutate() }}>
-            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="c-name">Nom du cabinet</Label><Input id="c-name" value={form.name} onChange={set('name')} required /></div>
+            <p className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[#5A6B65] sm:col-span-2">1. Le cabinet</p>
+            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="c-name">Nom du cabinet</Label><Input id="c-name" value={form.name} onChange={set('name')} placeholder="Cabinet dentaire Anfa" required /></div>
             <div className="space-y-1.5"><Label htmlFor="c-spec">Spécialité</Label><NativeSelect id="c-spec" value={form.specialty} onChange={set('specialty')}>{SPECIALTIES.map(s => <option key={s} value={s}>{t(`specialty.${s}`)}</option>)}</NativeSelect></div>
-            <div className="space-y-1.5"><Label htmlFor="c-plan">Plan</Label><NativeSelect id="c-plan" value={form.plan} onChange={set('plan')} required><option value="">—</option>{plans.filter(p => p.isActive).map(p => <option key={p.code} value={p.code}>{p.name}</option>)}</NativeSelect></div>
+            <div className="space-y-1.5"><Label htmlFor="c-plan">Plan</Label>
+              <NativeSelect id="c-plan" value={form.plan} onChange={set('plan')} required>
+                <option value="">Choisir…</option>
+                {plans.filter(p => p.isActive).map(p => <option key={p.code} value={p.code}>{p.code === 'TRIAL' ? `${p.name} (essai gratuit)` : `${p.name} · ${Number(p.monthlyPrice)} MAD / mois`}</option>)}
+              </NativeSelect>
+            </div>
             <div className="space-y-1.5"><Label htmlFor="c-city">Ville</Label><Input id="c-city" value={form.city} onChange={set('city')} /></div>
-            <div className="space-y-1.5"><Label htmlFor="c-phone">Téléphone</Label><Input id="c-phone" value={form.phone} onChange={set('phone')} /></div>
-            <p className="pt-2 text-sm font-semibold sm:col-span-2">Médecin titulaire (optionnel)</p>
-            <div className="space-y-1.5"><Label htmlFor="o-last">Nom</Label><Input id="o-last" value={form.ownerLastName} onChange={set('ownerLastName')} required={!!form.ownerEmail} /></div>
-            <div className="space-y-1.5"><Label htmlFor="o-first">Prénom</Label><Input id="o-first" value={form.ownerFirstName} onChange={set('ownerFirstName')} required={!!form.ownerEmail} /></div>
-            <div className="space-y-1.5"><Label htmlFor="o-email">Email</Label><Input id="o-email" type="email" value={form.ownerEmail} onChange={set('ownerEmail')} /></div>
-            <div className="space-y-1.5"><Label htmlFor="o-phone">Téléphone</Label><Input id="o-phone" value={form.ownerPhone} onChange={set('ownerPhone')} /></div>
-            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="o-pass">Mot de passe provisoire</Label><Input id="o-pass" type="password" minLength={8} value={form.ownerPassword} onChange={set('ownerPassword')} required={!!form.ownerEmail} autoComplete="new-password" /></div>
-            <Button type="submit" className="sm:col-span-2" disabled={create.isPending}>Créer le cabinet</Button>
+            <div className="space-y-1.5"><Label htmlFor="c-phone">Téléphone du cabinet</Label><Input id="c-phone" value={form.phone} onChange={set('phone')} /></div>
+
+            <p className="border-t border-[#D8E1DD] pt-4 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[#5A6B65] sm:col-span-2">2. Compte du médecin titulaire (administrateur du cabinet)</p>
+            <p className="-mt-1 text-sm text-[#5A6B65] sm:col-span-2">Il gère son équipe, ses tarifs et son abonnement. Vous pourrez ajouter d’autres médecins et assistants ensuite.</p>
+            <div className="grid grid-cols-[80px_1fr] gap-3 sm:col-span-2 sm:grid-cols-[80px_1fr_1fr]">
+              <div className="space-y-1.5"><Label htmlFor="o-title">Titre</Label><Input id="o-title" value={form.ownerTitle} onChange={set('ownerTitle')} placeholder="Dr" /></div>
+              <div className="space-y-1.5"><Label htmlFor="o-first">Prénom</Label><Input id="o-first" value={form.ownerFirstName} onChange={set('ownerFirstName')} required /></div>
+              <div className="col-span-2 space-y-1.5 sm:col-span-1"><Label htmlFor="o-last">Nom</Label><Input id="o-last" value={form.ownerLastName} onChange={set('ownerLastName')} required /></div>
+            </div>
+            <div className="space-y-1.5"><Label htmlFor="o-email">Email (identifiant de connexion)</Label><Input id="o-email" type="email" value={form.ownerEmail} onChange={set('ownerEmail')} required /></div>
+            <div className="space-y-1.5"><Label htmlFor="o-phone">Téléphone (WhatsApp)</Label><Input id="o-phone" value={form.ownerPhone} onChange={set('ownerPhone')} placeholder="06 12 34 56 78" /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="o-pass">Mot de passe</Label>
+              <div className="flex gap-2">
+                <Input id="o-pass" className="font-mono" minLength={8} value={form.ownerPassword} onChange={set('ownerPassword')} required autoComplete="new-password" />
+                <Button type="button" variant="outline" onClick={() => setForm(f => ({ ...f, ownerPassword: generatePassword() }))}><Wand2 size={16} className="me-1.5" />Générer</Button>
+              </div>
+              <p className="text-xs text-[#5A6B65]">Il sera affiché à la fin pour être transmis au médecin.</p>
+            </div>
+            <Button type="submit" className="sm:col-span-2" disabled={create.isPending}>{create.isPending ? 'Création…' : 'Créer le cabinet et son compte'}</Button>
           </form>
         </DialogContent>
       </Dialog>
 
       <SubscriptionDialog cabinet={managed} onOpenChange={(o) => !o && setManaged(null)} />
+      <CredentialsDialog credentials={credentials} onClose={() => { setCredentials(null); if (createdId) navigate(`/cabinets/${createdId}`) }} />
     </div>
   )
 }

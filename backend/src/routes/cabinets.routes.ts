@@ -15,6 +15,8 @@ const router = Router();
 router.use(authenticate);
 
 const DAY = 24 * 60 * 60 * 1000;
+const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 3);
+const TRIAL_PLAN_CODE = process.env.TRIAL_PLAN_CODE || 'TRIAL';
 const counts = { _count: { select: { users: true, patients: true } } };
 const superAdmin = [requireRoles('SUPER_ADMIN'), requirePermissions('MANAGE_CABINETS')];
 
@@ -32,6 +34,7 @@ const createSchema = z.object({
     password: z.string().min(8, 'Mot de passe : 8 caractères minimum'),
     firstName: z.string().min(1, 'Prénom requis'),
     lastName: z.string().min(1, 'Nom requis'),
+    title: z.string().trim().max(10).optional(),
     phone: z.string().optional(),
   }).optional(),
 });
@@ -113,16 +116,20 @@ router.post('/', ...superAdmin, async (req: Request, res: Response, next: NextFu
     const cabinet = await prisma.$transaction(async (tx) => {
       const plan = await tx.plan.findUnique({ where: { code: data.plan } });
       if (!plan || !plan.isActive) throw new AppError('Plan invalide ou inactif', 400);
+      // The trial plan starts a real free trial (same length as self sign-up), any other plan a paid period.
+      const trial = plan.code === TRIAL_PLAN_CODE;
+      const status = trial ? 'TRIALING' : 'ACTIVE';
       const periodEnd = new Date();
-      periodEnd.setMonth(periodEnd.getMonth() + plan.durationMonths);
+      if (trial) periodEnd.setDate(periodEnd.getDate() + TRIAL_DAYS);
+      else periodEnd.setMonth(periodEnd.getMonth() + plan.durationMonths);
       const created = await tx.cabinet.create({
         data: {
           name: data.name, specialty: data.specialty, address: data.address, city: data.city, phone: data.phone, email: data.email, currency: data.currency,
-          plan: plan.code, subscriptionStatus: 'ACTIVE', currentPeriodEnd: periodEnd, ...planQuotas(plan),
+          plan: plan.code, subscriptionStatus: status, currentPeriodEnd: periodEnd, trialEndsAt: trial ? periodEnd : null, ...planQuotas(plan),
         },
         include: counts,
       });
-      await tx.subscriptionHistory.create({ data: { cabinetId: created.id, plan: plan.code, status: 'ACTIVE', startedAt: new Date(), periodEnd } });
+      await tx.subscriptionHistory.create({ data: { cabinetId: created.id, plan: plan.code, status, startedAt: new Date(), periodEnd } });
       await copyDefaultActs(tx, created.id, data.specialty);
       if (data.owner) {
         const email = data.owner.email.toLowerCase();
@@ -130,7 +137,7 @@ router.post('/', ...superAdmin, async (req: Request, res: Response, next: NextFu
         await tx.user.create({
           data: {
             email, password: await hashPassword(data.owner.password), firstName: data.owner.firstName, lastName: data.owner.lastName,
-            phone: data.owner.phone, title: 'Dr', role: 'OWNER', specialty: data.specialty, seesAllPatients: true, cabinetId: created.id,
+            phone: data.owner.phone, title: data.owner.title ?? 'Dr', role: 'OWNER', specialty: data.specialty, seesAllPatients: true, cabinetId: created.id,
           },
         });
       }

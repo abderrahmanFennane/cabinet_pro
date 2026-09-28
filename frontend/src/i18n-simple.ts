@@ -6,7 +6,7 @@ export const frSimple = {
   },
   can: {
     title: 'Vous pouvez',
-    SUPER_ADMIN: ['Créer, suspendre et prolonger les cabinets', 'Régler les plans, prix et limites', 'Ouvrir le cabinet de démonstration'],
+    SUPER_ADMIN: ['Créer, suspendre et prolonger les cabinets', 'Créer les comptes : titulaires, médecins, assistants', 'Régler les plans, prix et limites', 'Ouvrir le cabinet de démonstration'],
     SUPER_ADMIN_NOT: ['Ouvrir un vrai dossier patient sans l’accord du cabinet'],
     OWNER: ['Tout ce que fait un médecin', 'Voir l’agenda et l’argent de tout le cabinet', 'Gérer l’équipe, les tarifs et l’abonnement'],
     OWNER_NOT: [],
@@ -38,7 +38,7 @@ export const enSimple: Dict = {
   },
   can: {
     title: 'You can',
-    SUPER_ADMIN: ['Create, pause and extend practices', 'Set plans, prices and limits', 'Open the demo practice'],
+    SUPER_ADMIN: ['Create, pause and extend practices', 'Create accounts: owners, doctors, assistants', 'Set plans, prices and limits', 'Open the demo practice'],
     SUPER_ADMIN_NOT: ['Open a real patient file without the practice’s consent'],
     OWNER: ['Everything a doctor can do', 'See the whole practice’s schedule and money', 'Manage team, prices and subscription'],
     OWNER_NOT: [],
@@ -68,7 +68,7 @@ export const arSimple: Dict = {
   },
   can: {
     title: 'يمكنك',
-    SUPER_ADMIN: ['إنشاء العيادات وإيقافها وتمديدها', 'ضبط الخطط والأسعار والحدود', 'فتح العيادة التجريبية'],
+    SUPER_ADMIN: ['إنشاء العيادات وإيقافها وتمديدها', 'إنشاء الحسابات: الأطباء المالكون والأطباء والمساعدون', 'ضبط الخطط والأسعار والحدود', 'فتح العيادة التجريبية'],
     SUPER_ADMIN_NOT: ['فتح ملف مريض حقيقي دون موافقة العيادة'],
     OWNER: ['كل ما يقوم به الطبيب', 'رؤية مواعيد وأموال العيادة كاملة', 'إدارة الفريق والأسعار والاشتراك'],
     OWNER_NOT: [],

@@ -11,6 +11,7 @@ export const pages = {
   Users: () => import('../pages/Users'),
   Pricing: () => import('../pages/Plans'),
   CabinetList: () => import('../pages/CabinetList'),
+  CabinetDetail: () => import('../pages/CabinetDetail'),
   PlansAdmin: () => import('../pages/PlansAdmin'),
   SpecialtiesAdmin: () => import('../pages/SpecialtiesAdmin'),
   SuperAdminSettings: () => import('../pages/SuperAdminSettings'),

@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { Building2, CreditCard, FileClock, FileText, Home, Layers, MoreHorizontal, Settings, UsersRound, Wallet } from 'lucide-react'
+import { Building2, CreditCard, FileClock, Home, Layers, MoreHorizontal, Settings, UsersRound, Wallet } from 'lucide-react'
 import { useAuth, useCabinetId } from '../../lib/hooks'
 import { Role } from '../../types'
 import { PermissionKey } from '../../types/permissions'
@@ -39,8 +39,14 @@ const cabinetItems: NavItem[] = [
 
 const platformItems: NavItem[] = [
   { labelKey: 'nav.allCabinets', icon: <Building2 size={20} />, tabs: [{ to: '/cabinets', labelKey: 'nav.allCabinets' }] },
-  { labelKey: 'nav.plans', icon: <Layers size={20} />, tabs: [{ to: '/plans', labelKey: 'nav.plans' }] },
-  { labelKey: 'nav.invoices', icon: <FileText size={20} />, tabs: [{ to: '/invoices', labelKey: 'nav.invoices' }] },
+  { labelKey: 'adminPage.usersTitle', icon: <UsersRound size={20} />, tabs: [{ to: '/users', labelKey: 'adminPage.usersTitle' }] },
+  {
+    labelKey: 'nav.plans', icon: <Layers size={20} />,
+    tabs: [
+      { to: '/plans', labelKey: 'nav.plans' },
+      { to: '/invoices', labelKey: 'nav.invoices' },
+    ],
+  },
   { labelKey: 'nav.audit', icon: <FileClock size={20} />, tabs: [{ to: '/audit', labelKey: 'nav.audit' }] },
   {
     labelKey: 'nav.more', icon: <MoreHorizontal size={20} />,
@@ -48,7 +54,6 @@ const platformItems: NavItem[] = [
       { to: '/superadmin/settings', labelKey: 'nav.settings' },
       { to: '/specialties', labelKey: 'nav.specialties' },
       { to: '/messages', labelKey: 'nav.messages' },
-      { to: '/users', labelKey: 'adminPage.usersTitle' },
     ],
   },
 ]

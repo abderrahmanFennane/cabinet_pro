@@ -24,12 +24,13 @@ export function planQuotas(plan: { maxPractitioners: number; maxAssistants: numb
 
 /** Throws when adding a user of this role would exceed the cabinet's plan quota. */
 export async function assertSeatAvailable(tx: Tx, cabinetId: string, role: string) {
-  const cabinet = await tx.cabinet.findUnique({ where: { id: cabinetId }, select: { maxPractitioners: true, maxAssistants: true, deletedAt: true } });
+  const cabinet = await tx.cabinet.findUnique({ where: { id: cabinetId }, select: { plan: true, maxPractitioners: true, maxAssistants: true, deletedAt: true } });
   if (!cabinet || cabinet.deletedAt) throw new AppError('Cabinet introuvable', 404);
   const isPractitioner = role === 'OWNER' || role === 'PRACTITIONER';
   const used = await tx.user.count({ where: { cabinetId, deletedAt: null, role: isPractitioner ? { in: ['OWNER', 'PRACTITIONER'] } : 'ASSISTANT' } });
   const limit = isPractitioner ? cabinet.maxPractitioners : cabinet.maxAssistants;
   if (used >= limit) {
-    throw new AppError(`Quota atteint pour votre plan : ${limit} ${isPractitioner ? 'praticien(s)' : 'assistant(s)'}`, 409);
+    const what = isPractitioner ? `${limit} médecin${limit > 1 ? 's' : ''}` : `${limit} assistant${limit > 1 ? 's' : ''}`;
+    throw new AppError(`Le plan ${cabinet.plan} de ce cabinet permet ${what}, déjà atteint. Passez à un plan supérieur (Abonnement) pour en ajouter.`, 409);
   }
 }
