@@ -54,11 +54,13 @@ type Props = {
   state: ToothStateCode
   /** Upper jaw: crown points down. */
   upper?: boolean
+  /** Pink gum line: only inside the full chart, where it joins from tooth to tooth. */
+  gum?: boolean
   className?: string
 }
 
 /** Drawing of one tooth with its state painted on it (cavity, filling, crown, canal, implant…). */
-export default function ToothGlyph({ tooth, state, upper = false, className }: Props) {
+export default function ToothGlyph({ tooth, state, upper = false, gum = false, className }: Props) {
   const shape = SHAPES[toothKind(tooth)]
   const { w } = shape
   const cx = w / 2
@@ -74,7 +76,7 @@ export default function ToothGlyph({ tooth, state, upper = false, className }: P
     <svg viewBox={`-6 0 ${w + 12} 100`} className={className} aria-hidden="true" style={{ overflow: 'visible' }}>
       <g transform={upper ? 'translate(0 100) scale(1 -1)' : undefined}>
         {/* Gum line, continuous from one tooth to the next */}
-        <rect x={-7} y={41} width={w + 14} height={16} fill="#F7DADA" opacity="0.55" />
+        {gum && <rect x={-7} y={41} width={w + 14} height={16} fill="#F7DADA" opacity="0.55" />}
         <g opacity={missing ? 0.4 : 1}>
         {/* An erupting tooth sits lower in the gum. */}
         <g transform={state === 'ERUPTING' ? 'translate(0 14)' : undefined}>

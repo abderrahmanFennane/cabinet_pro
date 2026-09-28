@@ -63,7 +63,7 @@ export default function Odontogram({ dentition, states, plannedTeeth, selected =
         )}
       >
         {upper && number}
-        <ToothGlyph tooth={n} state={code} upper={upper} className="h-auto w-full" />
+        <ToothGlyph tooth={n} state={code} upper={upper} gum className="h-auto w-full" />
         {!upper && number}
         {planned.has(n) && (
           <span aria-hidden="true" className={cn('absolute end-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-white', upper ? 'bottom-1.5' : 'top-1.5')} />

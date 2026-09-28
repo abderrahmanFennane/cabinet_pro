@@ -3,10 +3,10 @@ import { prisma } from '../config/prisma';
 import { normalizePhone } from '../utils/phone';
 
 export type MessageChannel = 'SMS' | 'WHATSAPP';
-export type MessageKind = 'APPOINTMENT_REMINDER' | 'PLAN_EXPIRY' | 'OWNER_MESSAGE' | 'WELCOME' | 'TEST';
+export type MessageKind = 'APPOINTMENT_REMINDER' | 'PLAN_EXPIRY' | 'OWNER_MESSAGE' | 'WELCOME' | 'TEST' | 'PASSWORD_RESET';
 
 // SMS goes through Infobip; WhatsApp through Meta's WhatsApp Cloud API.
-// Without credentials a provider runs in "log" mode: the message is cabinetd with status LOGGED but not sent.
+// Without credentials a provider runs in "log" mode: the message is stored with status LOGGED but not sent.
 const infobip = {
   baseUrl: (process.env.INFOBIP_BASE_URL || '').replace(/\/$/, ''),
   apiKey: process.env.INFOBIP_API_KEY || '',
@@ -24,6 +24,7 @@ const whatsapp = {
     OWNER_MESSAGE: process.env.WHATSAPP_TEMPLATE_OWNER_MESSAGE || '',
     WELCOME: '',
     TEST: '',
+    PASSWORD_RESET: '',
   } as Record<MessageKind, string>,
 };
 

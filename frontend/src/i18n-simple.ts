@@ -24,7 +24,7 @@ export const frSimple = {
     checkIn: 'Arrivé', sendIn: 'Faire entrer', noShow: 'Absent', seen: 'Patients vus', collected: 'Encaissé aujourd’hui', unpaid: 'Impayés', waited: 'attend {{count}} min',
     years: '{{count}} ans', allergy: 'Allergie : {{list}}',
   },
-  login: { eyebrow: 'Gestion de cabinet médical', chart: 'Schéma dentaire interactif', reminders: 'Rappels WhatsApp la veille', languages: 'Français, arabe, anglais' },
+  login: { eyebrow: 'Gestion de cabinet médical', chart: 'Schéma dentaire interactif', reminders: 'Rappels WhatsApp la veille', languages: 'Français, arabe, anglais', forgot: 'Mot de passe oublié ?', forgotTitle: 'Mot de passe oublié', forgotHint: 'Saisissez votre email. Nous envoyons un code à 6 chiffres par SMS au numéro enregistré sur votre compte.', sendCode: 'Recevoir un code', codeTitle: 'Saisissez le code reçu', code: 'Code reçu par SMS', newPassword: 'Nouveau mot de passe', changePassword: 'Changer le mot de passe', newCode: 'Renvoyer un code', back: 'Retour à la connexion', noPhone: 'Pas de téléphone sur votre compte ? Demandez au médecin titulaire de changer votre mot de passe depuis Équipe.', changed: 'Mot de passe modifié. Connectez-vous avec le nouveau.' },
   adminPage: { assistants: '{{count}} assistant(e)(s)', assistantsUnlimited: 'Assistants illimités' },
 }
 
@@ -55,7 +55,7 @@ export const enSimple: Dict = {
     checkIn: 'Check in', sendIn: 'Send in', noShow: 'No-show', seen: 'Patients seen', collected: 'Collected today', unpaid: 'Unpaid', waited: 'waiting {{count}} min',
     years: '{{count}} years', allergy: 'Allergy: {{list}}',
   },
-  login: { eyebrow: 'Medical practice management', chart: 'Interactive tooth chart', reminders: 'WhatsApp reminders the day before', languages: 'French, Arabic, English' },
+  login: { eyebrow: 'Medical practice management', chart: 'Interactive tooth chart', reminders: 'WhatsApp reminders the day before', languages: 'French, Arabic, English', forgot: 'Forgot password?', forgotTitle: 'Forgot password', forgotHint: 'Enter your email. We send a 6-digit code by SMS to the phone number saved on your account.', sendCode: 'Get a code', codeTitle: 'Enter the code you received', code: 'Code received by SMS', newPassword: 'New password', changePassword: 'Change password', newCode: 'Send a new code', back: 'Back to sign in', noPhone: 'No phone on your account? Ask the practice owner to change your password from Team.', changed: 'Password changed. Sign in with the new one.' },
   adminPage: { assistants: '{{count}} assistant(s)', assistantsUnlimited: 'Unlimited assistants' },
 }
 
@@ -84,6 +84,6 @@ export const arSimple: Dict = {
     checkIn: 'وصل', sendIn: 'إدخال', noShow: 'غائب', seen: 'مرضى تمت معاينتهم', collected: 'المحصّل اليوم', unpaid: 'غير مدفوع', waited: 'ينتظر {{count}} دقيقة',
     years: '{{count}} سنة', allergy: 'حساسية: {{list}}',
   },
-  login: { eyebrow: 'إدارة العيادات الطبية', chart: 'مخطط أسنان تفاعلي', reminders: 'تذكير عبر واتساب قبل يوم', languages: 'الفرنسية والعربية والإنجليزية' },
+  login: { eyebrow: 'إدارة العيادات الطبية', chart: 'مخطط أسنان تفاعلي', reminders: 'تذكير عبر واتساب قبل يوم', languages: 'الفرنسية والعربية والإنجليزية', forgot: 'نسيت كلمة المرور؟', forgotTitle: 'نسيت كلمة المرور', forgotHint: 'أدخل بريدك الإلكتروني. نرسل رمزاً من 6 أرقام عبر رسالة قصيرة إلى الرقم المسجل في حسابك.', sendCode: 'استلام رمز', codeTitle: 'أدخل الرمز المستلم', code: 'الرمز المستلم عبر الرسائل', newPassword: 'كلمة مرور جديدة', changePassword: 'تغيير كلمة المرور', newCode: 'إرسال رمز جديد', back: 'العودة لتسجيل الدخول', noPhone: 'لا يوجد هاتف في حسابك؟ اطلب من الطبيب المالك تغيير كلمة المرور من صفحة الفريق.', changed: 'تم تغيير كلمة المرور. سجّل الدخول بالكلمة الجديدة.' },
   adminPage: { assistants: '{{count}} مساعد(ة)', assistantsUnlimited: 'مساعدون بلا حدود' },
 }

@@ -1,9 +1,10 @@
+import { randomInt } from 'crypto';
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/prisma';
 import { comparePassword, generateToken, hashPassword } from '../utils/auth';
 import { rateLimit } from '../utils/rate-limit';
-import { createInboxMessage } from '../services/messaging';
+import { createInboxMessage, sendMessage } from '../services/messaging';
 import { copyDefaultActs, planQuotas } from '../services/cabinet-setup';
 import { sendSuccess } from '../utils/response';
 import { authenticate } from '../middleware/auth';
@@ -110,6 +111,68 @@ router.post('/login', loginLimiter, async (req: Request, res: Response, next: Ne
     const token = generateToken({ userId: user.id, role: user.role, cabinetId: user.cabinetId });
     void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'LOGIN_SUCCESS', method: req.method, path: req.originalUrl, status: 200 });
     sendSuccess(res, { token, user: publicUser(user) }, 'Connexion réussie');
+  } catch (err) {
+    next(err);
+  }
+});
+
+const RESET_CODE_MINUTES = 15;
+const RESET_MAX_ATTEMPTS = 5;
+const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'Trop de demandes. Réessayez dans quelques minutes.' });
+const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 15, message: 'Trop de tentatives. Réessayez dans quelques minutes.' });
+// Same answer whether the account exists or not, so the form cannot be used to discover emails.
+const FORGOT_REPLY = 'Si ce compte existe et a un numéro de téléphone, un code vient d’être envoyé par SMS. Il est valable 15 minutes.';
+
+/** Forgotten password, step 1: send a 6-digit code by SMS to the phone saved on the account. */
+router.post('/forgot-password', forgotLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = z.object({ email: z.string().trim().email('Email invalide') }).parse(req.body);
+    const user = await prisma.user.findFirst({ where: { email: email.toLowerCase(), deletedAt: null, isActive: true } });
+    if (user?.phone) {
+      const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+      await prisma.$transaction([
+        // A new code replaces any previous one.
+        prisma.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } }),
+        prisma.passwordReset.create({ data: { userId: user.id, codeHash: await hashPassword(code), expiresAt: new Date(Date.now() + RESET_CODE_MINUTES * 60_000) } }),
+      ]);
+      await sendMessage({
+        kind: 'PASSWORD_RESET', channel: 'SMS', toPhone: user.phone, cabinetId: user.cabinetId, toUserId: user.id,
+        body: `Cabinet Pro : votre code pour changer de mot de passe est ${code}. Il expire dans ${RESET_CODE_MINUTES} minutes. Ne le partagez avec personne.`,
+      });
+      void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'PASSWORD_RESET_REQUESTED', method: req.method, path: req.originalUrl, status: 200 });
+    }
+    sendSuccess(res, null, FORGOT_REPLY);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Forgotten password, step 2: check the code and set the new password. */
+router.post('/reset-password', resetLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = z.object({
+      email: z.string().trim().email('Email invalide'),
+      code: z.string().trim().regex(/^\d{6}$/, 'Le code contient 6 chiffres'),
+      password: z.string().min(8, 'Mot de passe : 8 caractères minimum'),
+    }).parse(req.body);
+    const invalid = new AppError('Code invalide ou expiré. Demandez un nouveau code.', 400);
+    const user = await prisma.user.findFirst({ where: { email: data.email.toLowerCase(), deletedAt: null, isActive: true } });
+    if (!user) throw invalid;
+    const reset = await prisma.passwordReset.findFirst({
+      where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!reset || reset.attempts >= RESET_MAX_ATTEMPTS) throw invalid;
+    if (!(await comparePassword(data.code, reset.codeHash))) {
+      await prisma.passwordReset.update({ where: { id: reset.id }, data: { attempts: { increment: 1 } } });
+      throw invalid;
+    }
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { password: await hashPassword(data.password) } }),
+      prisma.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
+    ]);
+    void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'PASSWORD_RESET', method: req.method, path: req.originalUrl, status: 200 });
+    sendSuccess(res, null, 'Mot de passe modifié. Vous pouvez vous connecter.');
   } catch (err) {
     next(err);
   }

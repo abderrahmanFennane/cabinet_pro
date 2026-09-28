@@ -36,6 +36,7 @@ model User {
   prescriptions   Prescription[]
   dentalActs      DentalAct[]
   treatmentPlans  TreatmentPlan[]
+  passwordResets  PasswordReset[]
 
   @@index([role])
   @@index([cabinetId])
@@ -666,4 +667,18 @@ model TreatmentPlan {
   quote Quote?
 
   @@index([cabinetId, patientId])
+}
+
+/// One-time code sent by SMS to reset a forgotten password. Only the hash is stored.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
