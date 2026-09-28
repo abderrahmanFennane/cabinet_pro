@@ -1,0 +1,21 @@
+// Each page is its own file, downloaded the first time it is needed (then preloaded in the background, see AppLayout).
+export const pages = {
+  Dashboard: () => import('../pages/Dashboard'),
+  Today: () => import('../pages/Today'),
+  Agenda: () => import('../pages/Agenda'),
+  WaitingRoom: () => import('../pages/WaitingRoom'),
+  Patients: () => import('../pages/Patients'),
+  PatientRecord: () => import('../pages/PatientRecord'),
+  Billing: () => import('../pages/Billing'),
+  Settings: () => import('../pages/Settings'),
+  Users: () => import('../pages/Users'),
+  Pricing: () => import('../pages/Plans'),
+  CabinetList: () => import('../pages/CabinetList'),
+  PlansAdmin: () => import('../pages/PlansAdmin'),
+  SpecialtiesAdmin: () => import('../pages/SpecialtiesAdmin'),
+  SuperAdminSettings: () => import('../pages/SuperAdminSettings'),
+  MessagesAdmin: () => import('../pages/MessagesAdmin'),
+  AuditLog: () => import('../pages/AuditLog'),
+  InvoicesAdmin: () => import('../pages/InvoicesAdmin'),
+  Print: () => import('../pages/Print'),
+}

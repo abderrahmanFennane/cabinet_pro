@@ -1,0 +1,669 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+// ─────────────────────────────── Platform ───────────────────────────────
+
+// Roles: SUPER_ADMIN (platform), OWNER (médecin titulaire), PRACTITIONER (collaborateur), ASSISTANT.
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  firstName       String
+  lastName        String
+  title           String?   // "Dr", "Pr"...
+  phone           String?
+  avatar          String?
+  role            String    @default("ASSISTANT")
+  specialty       String?   // practitioners only: DENTISTRY, GENERAL...
+  // Collaborator setting: see every patient of the cabinet, or only their own.
+  seesAllPatients Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  cabinetId       String?
+  cabinet         Cabinet?  @relation(fields: [cabinetId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  appointments    Appointment[]  @relation("AppointmentPractitioner")
+  consultations   Consultation[]
+  prescriptions   Prescription[]
+  dentalActs      DentalAct[]
+  treatmentPlans  TreatmentPlan[]
+
+  @@index([role])
+  @@index([cabinetId])
+}
+
+model Cabinet {
+  id                 String    @id @default(cuid())
+  name               String
+  address            String?
+  city               String?
+  phone              String?
+  email              String?
+  logo               String?
+  // Printed on prescriptions and invoices (INPE, ICE, order registration...).
+  letterhead         String?   @db.Text
+  currency           String    @default("MAD")
+  specialty          String    @default("DENTISTRY")
+  isDemo             Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  plan               String    @default("TRIAL")
+  subscriptionStatus String    @default("TRIALING")
+  trialEndsAt        DateTime?
+  currentPeriodEnd   DateTime?
+  maxPractitioners   Int       @default(1)
+  maxAssistants      Int       @default(1)
+  monthlyMessages    Int       @default(20)
+  remindersEnabled   Boolean   @default(true)
+  reminderChannel    String    @default("BOTH")
+  // Reminder delays, in minutes before the appointment (defaults: day before and one hour before).
+  reminderLeadMinutes String   @default("1440,60")
+  invoiceSeq         Int       @default(0)
+  quoteSeq           Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  users               User[]
+  patients            Patient[]
+  appointments        Appointment[]
+  consultations       Consultation[]
+  prescriptions       Prescription[]
+  prescriptionTemplates PrescriptionTemplate[]
+  documents           MedicalDocument[]
+  attachments         Attachment[]
+  acts                Act[]
+  invoices            Invoice[]
+  payments            Payment[]
+  quotes              Quote[]
+  toothStates         ToothState[]
+  dentalActs          DentalAct[]
+  treatmentPlans      TreatmentPlan[]
+  accessLogs          PatientAccessLog[]
+  supportGrants       SupportAccessGrant[]
+  subscriptionHistory SubscriptionHistory[]
+  billingInvoices     BillingInvoice[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model Plan {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  name             String
+  description      String?
+  monthlyPrice     Decimal   @default(0)
+  durationMonths   Int       @default(1)
+  maxPractitioners Int       @default(1)
+  maxAssistants    Int       @default(1)
+  monthlyMessages  Int       @default(100)
+  storageGb        Int       @default(5)
+  // JSON array of feature keys included in the plan (see types/permissions.ts).
+  permissions      String?   @db.Text
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  @@index([isActive])
+}
+
+// Default act catalogue per specialty, copied into each new cabinet (Super Admin, F-SA-02).
+model DefaultAct {
+  id             String   @id @default(cuid())
+  specialty      String
+  code           String
+  name           String
+  price          Decimal  @default(0)
+  category       String   @default("AUTRE")
+  scope          String   @default("NONE")
+  usesFaces      Boolean  @default(false)
+  resultingState String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([specialty, code])
+}
+
+model Specialty {
+  code      String  @id
+  name      String
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model SubscriptionHistory {
+  id        String   @id @default(cuid())
+  cabinetId String
+  cabinet   Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  plan      String
+  status    String
+  startedAt DateTime
+  periodEnd DateTime
+  createdAt DateTime @default(now())
+
+  @@index([cabinetId, createdAt])
+}
+
+model BillingInvoice {
+  id              String    @id @default(cuid())
+  cabinetId       String
+  cabinet         Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  stripeSessionId String?   @unique
+  stripeInvoiceId String?   @unique
+  plan            String
+  amount          Decimal
+  currency        String    @default("MAD")
+  status          String    @default("PENDING")
+  invoiceUrl      String?
+  paymentMethod   String?
+  reference       String?
+  periodEnd       DateTime?
+  createdAt       DateTime  @default(now())
+  paidAt          DateTime?
+
+  @@index([cabinetId, createdAt])
+}
+
+// Outgoing SMS/WhatsApp deliveries and in-app inbox items (channel IN_APP).
+model Message {
+  id            String    @id @default(cuid())
+  cabinetId     String?
+  kind          String
+  channel       String
+  toPhone       String?
+  toUserId      String?
+  fromUserId    String?
+  fromName      String?
+  fromPhone     String?
+  subject       String?
+  body          String    @db.Text
+  status        String    @default("PENDING")
+  error         String?   @db.Text
+  providerId    String?
+  appointmentId String?
+  dedupeKey     String?   @unique
+  readAt        DateTime?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([cabinetId, createdAt])
+  @@index([toUserId, readAt])
+  @@index([kind, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  cabinetId String?
+  action    String
+  method    String
+  path      String
+  status    Int
+  createdAt DateTime @default(now())
+
+  @@index([cabinetId, createdAt])
+  @@index([userId, createdAt])
+}
+
+// Who opened which patient record, and when (loi 09-08). Refused attempts are logged too.
+model PatientAccessLog {
+  id        String   @id @default(cuid())
+  cabinetId String
+  cabinet   Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId String
+  userId    String
+  // VIEW_RECORD, VIEW_MEDICAL, DENIED, SUPPORT_VIEW
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([cabinetId, createdAt])
+  @@index([patientId, createdAt])
+}
+
+// Time-limited support access to a real cabinet, granted by its owner (F-SA-04).
+model SupportAccessGrant {
+  id          String    @id @default(cuid())
+  cabinetId   String
+  cabinet     Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  grantedById String
+  readOnly    Boolean   @default(true)
+  reason      String?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([cabinetId, expiresAt])
+}
+
+model AppSettings {
+  id              String   @id
+  businessName    String?
+  businessLogo    String?
+  supportPhone    String?
+  supportEmail    String?
+  supportWhatsapp String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─────────────────────────────── Socle commun ───────────────────────────────
+
+model Patient {
+  id                  String    @id @default(cuid())
+  cabinetId           String
+  cabinet             Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  firstName           String
+  lastName            String
+  sex                 String?   // F, M
+  birthDate           DateTime?
+  cin                 String?
+  phone               String?
+  email               String?
+  address             String?
+  coverage            String    @default("NONE") // AMO, CNOPS, MUTUELLE, NONE
+  coverageNumber      String?
+  bloodGroup          String?
+  // Medical background (restricted to practitioners).
+  medicalHistory      String?   @db.Text
+  surgicalHistory     String?   @db.Text
+  familyHistory       String?   @db.Text
+  currentTreatments   String?   @db.Text
+  // Comma-separated; shown as a banner on every patient page.
+  allergies           String?   @db.Text
+  // Dental chart view forced by the practitioner (PRIMARY, MIXED, PERMANENT); null = from age.
+  dentition           String?
+  primaryPractitionerId String?
+  consentDataAt       DateTime?
+  consentRemindersAt  DateTime?
+  notes               String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  appointments   Appointment[]
+  consultations  Consultation[]
+  prescriptions  Prescription[]
+  documents      MedicalDocument[]
+  attachments    Attachment[]
+  invoices       Invoice[]
+  payments       Payment[]
+  quotes         Quote[]
+  toothStates    ToothState[]
+  dentalActs     DentalAct[]
+  treatmentPlans TreatmentPlan[]
+
+  @@index([cabinetId, lastName])
+  @@index([cabinetId, phone])
+  @@index([cabinetId, cin])
+}
+
+model Appointment {
+  id                 String    @id @default(cuid())
+  cabinetId          String
+  cabinet            Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId          String?
+  patient            Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  practitionerId     String
+  practitioner       User      @relation("AppointmentPractitioner", fields: [practitionerId], references: [id], onDelete: Cascade)
+  date               DateTime
+  durationMinutes    Int       @default(30)
+  type               String    @default("CONSULTATION")
+  reason             String?
+  // PLANNED, CONFIRMED, ARRIVED, IN_CONSULTATION, DONE, CANCELLED, NO_SHOW
+  status             String    @default("PLANNED")
+  walkIn             Boolean   @default(false)
+  arrivedAt          DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  // Comma-separated lead times (minutes) already reminded.
+  remindersSent      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  consultations Consultation[]
+
+  @@index([cabinetId, date])
+  @@index([practitionerId, date])
+  @@index([patientId])
+  @@index([status])
+}
+
+model Consultation {
+  id             String       @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet      @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  practitionerId String
+  practitioner   User         @relation(fields: [practitionerId], references: [id], onDelete: Restrict)
+  appointmentId  String?
+  appointment    Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  specialty      String       @default("GENERAL")
+  date           DateTime     @default(now())
+  reason         String?      @db.Text
+  examination    String?      @db.Text
+  // JSON: { bp, pulse, weight, height, temperature, glucose... }
+  vitals         String?      @db.Text
+  diagnosis      String?      @db.Text
+  plan           String?      @db.Text
+  notes          String?      @db.Text
+  // DRAFT, LOCKED
+  status         String       @default("DRAFT")
+  lockedAt       DateTime?
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  revisions ConsultationRevision[]
+
+  @@index([cabinetId, patientId, date])
+}
+
+// Snapshot of a locked consultation before a dated, signed correction (F-CST-04).
+model ConsultationRevision {
+  id             String       @id @default(cuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  version        Int
+  content        String       @db.Text
+  authorId       String
+  reason         String?
+  createdAt      DateTime     @default(now())
+
+  @@index([consultationId, version])
+}
+
+model Prescription {
+  id             String   @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  practitionerId String
+  practitioner   User     @relation(fields: [practitionerId], references: [id], onDelete: Restrict)
+  consultationId String?
+  date           DateTime @default(now())
+  // JSON array: [{ drug, dosage, duration, notes }]
+  items          String   @db.Text
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([cabinetId, patientId, date])
+}
+
+model PrescriptionTemplate {
+  id             String   @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  practitionerId String?
+  name           String
+  items          String   @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([cabinetId])
+}
+
+// Certificates, sick leave, referral letters, exam requests (F-DOC-03).
+model MedicalDocument {
+  id             String   @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  practitionerId String
+  type           String
+  title          String
+  body           String   @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([cabinetId, patientId, createdAt])
+}
+
+// X-rays, lab results, reports. Stored outside the public uploads folder.
+model Attachment {
+  id           String   @id @default(cuid())
+  cabinetId    String
+  cabinet      Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId    String
+  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type         String   @default("OTHER") // XRAY, LAB, REPORT, PHOTO, OTHER
+  title        String?
+  fileName     String
+  storedName   String
+  mimeType     String
+  size         Int
+  // Dental X-rays: comma-separated FDI numbers.
+  teeth        String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([cabinetId, patientId, createdAt])
+}
+
+// Cabinet act catalogue with prices (F-FAC-01, F-DEN-05).
+model Act {
+  id             String    @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  specialty      String    @default("GENERAL")
+  code           String
+  name           String
+  price          Decimal   @default(0)
+  category       String    @default("AUTRE")
+  // Dental target: NONE, TOOTH, TEETH, QUADRANT, MOUTH
+  scope          String    @default("NONE")
+  usesFaces      Boolean   @default(false)
+  // Tooth state after the act is done (e.g. EXTRACTION -> MISSING).
+  resultingState String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@unique([cabinetId, code])
+  @@index([cabinetId, isActive])
+}
+
+model Invoice {
+  id             String    @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  practitionerId String?
+  number         String
+  date           DateTime  @default(now())
+  total          Decimal   @default(0)
+  paid           Decimal   @default(0)
+  // OPEN, PARTIAL, PAID, CANCELLED
+  status         String    @default("OPEN")
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@unique([cabinetId, number])
+  @@index([cabinetId, date])
+  @@index([patientId])
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  actId       String?
+  dentalActId String?  @unique
+  code        String?
+  label       String
+  teeth       String?
+  faces       String?
+  quantity    Int      @default(1)
+  unitPrice   Decimal
+  total       Decimal
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  cabinetId    String
+  cabinet      Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId    String
+  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  invoiceId    String?
+  invoice      Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  quoteId      String?
+  quote        Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  // CASH, CARD, TRANSFER, CHECK
+  method       String   @default("CASH")
+  amount       Decimal
+  reference    String?
+  paidAt       DateTime @default(now())
+  receivedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([cabinetId, paidAt])
+  @@index([patientId])
+}
+
+// Devis (F-FAC-03, F-DEN-07). Payments on an accepted quote reduce its remaining balance.
+model Quote {
+  id              String         @id @default(cuid())
+  cabinetId       String
+  cabinet         Cabinet        @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  treatmentPlanId String?        @unique
+  treatmentPlan   TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
+  practitionerId  String?
+  number          String
+  date            DateTime       @default(now())
+  validUntil      DateTime?
+  total           Decimal        @default(0)
+  // DRAFT, SENT, ACCEPTED, REJECTED
+  status          String         @default("DRAFT")
+  acceptedAt      DateTime?
+  // JSON array: [{ dueDate, amount }]
+  installments    String?        @db.Text
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  items    QuoteItem[]
+  payments Payment[]
+
+  @@unique([cabinetId, number])
+  @@index([patientId])
+}
+
+model QuoteItem {
+  id        String  @id @default(cuid())
+  quoteId   String
+  quote     Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  actId     String?
+  code      String?
+  label     String
+  teeth     String?
+  faces     String?
+  quantity  Int     @default(1)
+  unitPrice Decimal
+  total     Decimal
+
+  @@index([quoteId])
+}
+
+// ─────────────────────────────── Module dentiste ───────────────────────────────
+
+// Current state of one tooth (FDI number) of a patient.
+model ToothState {
+  id        String   @id @default(cuid())
+  cabinetId String
+  cabinet   Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tooth     Int
+  // HEALTHY, CARIES, FILLED, CROWN, BRIDGE, ENDO, IMPLANT, MISSING, FRACTURED, MOBILE, ERUPTING
+  state     String   @default("HEALTHY")
+  // Affected faces: comma-separated among M, D, O, I, V, L, P
+  faces     String?
+  notes     String?  @db.Text
+  updatedById String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([patientId, tooth])
+  @@index([cabinetId])
+}
+
+// A dental act, planned or performed, on one or several teeth.
+model DentalAct {
+  id              String         @id @default(cuid())
+  cabinetId       String
+  cabinet         Cabinet        @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  practitionerId  String
+  practitioner    User           @relation(fields: [practitionerId], references: [id], onDelete: Restrict)
+  treatmentPlanId String?
+  treatmentPlan   TreatmentPlan? @relation(fields: [treatmentPlanId], references: [id], onDelete: SetNull)
+  actId           String?
+  code            String?
+  label           String
+  // NONE, TOOTH, TEETH, QUADRANT, MOUTH
+  scope           String         @default("TOOTH")
+  // Comma-separated FDI numbers, e.g. "36" or "36,37"
+  teeth           String?
+  faces           String?
+  price           Decimal        @default(0)
+  resultingState  String?
+  // PLANNED, DONE, CANCELLED
+  status          String         @default("PLANNED")
+  session         Int?
+  performedAt     DateTime?
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([cabinetId, patientId, status])
+  @@index([treatmentPlanId])
+}
+
+model TreatmentPlan {
+  id             String      @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet     @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  practitionerId String
+  practitioner   User        @relation(fields: [practitionerId], references: [id], onDelete: Restrict)
+  title          String
+  // PROPOSED, ACCEPTED, IN_PROGRESS, DONE, CANCELLED
+  status         String      @default("PROPOSED")
+  notes          String?     @db.Text
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  acts  DentalAct[]
+  quote Quote?
+
+  @@index([cabinetId, patientId])
+}

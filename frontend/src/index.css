@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Palette of the approved prototype: cool off-white, deep green ink, pine accent. */
+    --background: 150 13% 95%;
+    --foreground: 162 27% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 162 27% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 162 27% 11%;
+    --primary: 166 72% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 153 14% 93%;
+    --secondary-foreground: 162 27% 11%;
+    --muted: 153 14% 93%;
+    --muted-foreground: 158 8% 39%;
+    --accent: 157 39% 90%;
+    --accent-foreground: 166 72% 26%;
+    --destructive: 5 61% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 153 13% 86%;
+    --input: 153 13% 82%;
+    --ring: 166 72% 26%;
+    --radius: 0.75rem;
+    --success: 144 61% 30%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 142 40% 91%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: Figtree, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#C9D6D0] rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-[#A7B8B0];
+  }
+
+  /* Avoid iOS zooming into inputs smaller than 16px. */
+  @media (max-width: 639px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+@layer components {
+  /* Soft decorative blobs, same language as the user home page. */
+  .page-blob {
+    @apply pointer-events-none absolute -z-10 rounded-full;
+  }
+
+  /* Pastel icon chip used for stats, list avatars and empty states. */
+  .icon-chip {
+    @apply flex shrink-0 items-center justify-center rounded-2xl;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media print {
+  @page {
+    margin: 1cm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+    color: black !important;
+  }
+
+  th {
+    background: #f0f0f0 !important;
+  }
+}
+
+/* ─── Odontogram: every state has a colour AND a pattern, readable without colour vision ─── */
+@layer components {
+  .tooth-tile {
+    @apply relative flex flex-col items-center justify-center rounded-[10px] border-[1.5px] font-mono text-[0.86rem] font-semibold transition-shadow;
+    border-color: #D8E1DD;
+    background: #fff;
+    color: #14231E;
+    aspect-ratio: 3 / 4;
+  }
+  .tooth-tile:hover { border-color: #5A6B65; }
+  .tooth-tile:focus-visible { outline: 2px solid #12705A; outline-offset: 2px; }
+  .tooth-tile[data-selected="true"] { outline: 3px solid #12705A; outline-offset: 2px; }
+  .tooth-HEALTHY { }
+  .tooth-CARIES { background: repeating-radial-gradient(circle at 30% 30%, #FBE3E0 0 3px, #F6CFCA 3px 5px); border-color: #B8372C; color: #B8372C; }
+  .tooth-FILLED { background: #E1E9F7; border-color: #2D5DAA; color: #2D5DAA; }
+  .tooth-CROWN { background: repeating-linear-gradient(0deg, #FBEED6 0 5px, #F4DDB0 5px 7px); border-color: #99600B; color: #99600B; }
+  .tooth-BRIDGE { background: repeating-linear-gradient(90deg, #FBEED6 0 5px, #F4DDB0 5px 7px); border-color: #99600B; color: #99600B; border-width: 2.5px; }
+  .tooth-ENDO { background: linear-gradient(90deg, #EEE7F8 0 44%, #CDBBEC 44% 56%, #EEE7F8 56%); border-color: #6746A8; color: #6746A8; }
+  .tooth-IMPLANT { background: repeating-linear-gradient(0deg, #E9EFEC 0 3px, #C9D6D0 3px 4px); border-color: #14231E; color: #14231E; }
+  .tooth-MISSING { background: transparent; border-style: dashed; border-color: #8A9A94; color: #5A6B65; text-decoration: line-through; }
+  .tooth-FRACTURED { background: linear-gradient(135deg, #FBE3E0 0 47%, #B8372C 47% 53%, #FBE3E0 53%); border-color: #B8372C; color: #B8372C; }
+  .tooth-MOBILE { background: repeating-linear-gradient(45deg, #FBEED6 0 4px, #F4DDB0 4px 6px); border-color: #99600B; color: #7A4C08; }
+  .tooth-ERUPTING { background: #F2F5F3; border-style: dotted; border-width: 2px; border-color: #12705A; color: #12705A; }
+  .tooth-planned::after {
+    content: ""; position: absolute; top: 4px; inset-inline-end: 4px; width: 8px; height: 8px; border-radius: 9999px; background: #12705A;
+    box-shadow: 0 0 0 2px #fff;
+  }
+}
+
+/* ─── Print (prescriptions, invoices, quotes) ─── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+  .print-page { box-shadow: none !important; border: 0 !important; margin: 0 !important; max-width: none !important; padding: 0 !important; }
+  @page { size: A4; margin: 16mm; }
+}

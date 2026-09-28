@@ -1,0 +1,110 @@
+import { createContext, useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '../lib/api'
+import { Role, User } from '../types'
+import { PermissionKey } from '../types/permissions'
+
+interface AuthContextType {
+  user: User | null
+  loading: boolean
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
+  fetchMe: () => Promise<void>
+  hasRole: (roles: Role | Role[]) => boolean
+  hasPermissions: (permissions: PermissionKey | PermissionKey[]) => boolean
+  isAuthenticated: boolean
+}
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+
+  const fetchMe = useCallback(async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    try {
+      const { data } = await api.get('/auth/me')
+      setUser(data.data || data)
+    } catch {
+      localStorage.removeItem('token')
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchMe()
+  }, [fetchMe])
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setUser(null)
+      setLoading(false)
+      if (window.location.pathname !== '/login') {
+        navigate('/login', { replace: true })
+      }
+    }
+    window.addEventListener('auth:expired', handleAuthExpired)
+    return () => window.removeEventListener('auth:expired', handleAuthExpired)
+  }, [navigate])
+
+  useEffect(() => {
+    const handleAuthRefresh = () => {
+      void fetchMe()
+    }
+    window.addEventListener('auth:refresh', handleAuthRefresh)
+    return () => window.removeEventListener('auth:refresh', handleAuthRefresh)
+  }, [fetchMe])
+
+  const login = async (email: string, password: string) => {
+    setLoading(true)
+    try {
+      const { data } = await api.post('/auth/login', { email, password })
+      const token = data.token || data.data?.token
+      if (token) {
+        localStorage.setItem('token', token)
+      }
+      await fetchMe()
+    } catch (err) {
+      setLoading(false)
+      throw err
+    }
+  }
+
+  const logout = () => {
+    localStorage.removeItem('token')
+    setUser(null)
+    navigate('/login', { replace: true })
+  }
+
+  const hasRole = (roles: Role | Role[]) => {
+    if (!user) return false
+    const roleArray = Array.isArray(roles) ? roles : [roles]
+    return roleArray.includes(user.role)
+  }
+
+  const hasPermissions = (permissions: PermissionKey | PermissionKey[]) => {
+    if (!user) return false
+    if (user.role === Role.SUPER_ADMIN) return true
+    const userPerms = (user.permissions || []) as PermissionKey[]
+    const required = Array.isArray(permissions) ? permissions : [permissions]
+    return required.every(p => userPerms.includes(p))
+  }
+
+  const isAuthenticated = !!user && !!localStorage.getItem('token')
+
+  return (
+    <AuthContext.Provider
+      value={{ user, loading, login, logout, fetchMe, hasRole, hasPermissions, isAuthenticated }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}

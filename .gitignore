@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-prisma/
+.env
+*.log
+backend/uploads/
+backend/private-uploads/
