@@ -168,13 +168,14 @@ function Privacy() {
     onSuccess: () => { toast.success('Accès révoqué'); queryClient.invalidateQueries({ queryKey: ['support-grants'] }) },
   })
   const active = grants.find(g => !g.revokedAt && new Date(g.expiresAt) > new Date())
-  const ACTIONS: Record<string, string> = { VIEW_RECORD: 'Fiche consultée', VIEW_MEDICAL: 'Dossier médical consulté', DENIED: 'Accès refusé', SUPPORT_VIEW: 'Consultation par le support' }
+  // Support (Super Admin) visits are recorded in the platform audit log only; the cabinet's log lists its own team.
+  const ACTIONS: Record<string, string> = { VIEW_RECORD: 'Fiche consultée', VIEW_MEDICAL: 'Dossier médical consulté', DENIED: 'Accès refusé', ...(user?.role === 'SUPER_ADMIN' ? { SUPPORT_VIEW: 'Consultation par le support' } : {}) }
 
   return (
     <div className="space-y-5">
       <section className="space-y-3 rounded-[14px] border border-[#D8E1DD] bg-white p-4">
         <h3 className="flex items-center gap-2 font-bold"><ShieldCheck size={18} className="text-primary" />Accès du support technique</h3>
-        <p className="text-sm text-muted-foreground">L’équipe Cabinet Pro ne voit aucun dossier de votre cabinet sans votre autorisation. L’accès est limité dans le temps, en lecture seule, et chaque consultation apparaît dans le journal ci-dessous.</p>
+        <p className="text-sm text-muted-foreground">L’équipe Cabinet Pro ne voit aucun dossier de votre cabinet sans votre autorisation. L’accès est limité dans le temps, en lecture seule, et vous pouvez le révoquer à tout moment.</p>
         {active ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-accent p-3 text-sm">
             <span>Accès autorisé jusqu’au <b>{formatDateTimeFR(active.expiresAt)}</b> (lecture seule)</span>

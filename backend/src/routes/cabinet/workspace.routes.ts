@@ -80,12 +80,24 @@ router.get('/dashboard', requirePermissions('VIEW_REPORTS'), async (req: Request
   } catch (err) { next(err); }
 });
 
-/** Who opened which patient record (owner only). */
+/**
+ * Who opened which patient record (owner only).
+ * Platform (Super Admin) activity is only shown in the Super Admin's own audit log, never to cabinet users.
+ */
 router.get('/access-log', requirePermissions('MANAGE_SETTINGS'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const q = z.object({ patientId: z.string().optional(), action: z.string().optional(), take: z.coerce.number().int().min(1).max(500).default(200) }).parse(req.query);
+    const hidePlatform = req.user!.role !== 'SUPER_ADMIN';
+    const platformIds = hidePlatform ? (await prisma.user.findMany({ where: { role: 'SUPER_ADMIN' }, select: { id: true } })).map(u => u.id) : [];
     const logs = await prisma.patientAccessLog.findMany({
-      where: { cabinetId: req.params.cabinetId, ...(q.patientId ? { patientId: q.patientId } : {}), ...(q.action ? { action: q.action } : {}) },
+      where: {
+        cabinetId: req.params.cabinetId,
+        ...(q.patientId ? { patientId: q.patientId } : {}),
+        AND: [
+          q.action ? { action: q.action } : {},
+          hidePlatform ? { userId: { notIn: platformIds }, action: { not: 'SUPPORT_VIEW' } } : {},
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       take: q.take,
     });
