@@ -8,9 +8,17 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Secrets cannot be read in an `if`, so expose whether the server is configured through env.
+    env:
+      VPS_CONFIGURED: ${{ secrets.VPS_HOST != '' && secrets.VPS_USER != '' && secrets.VPS_SSH_KEY != '' }}
 
     steps:
+      - name: Skip, no server configured yet
+        if: env.VPS_CONFIGURED != 'true'
+        run: echo "::notice::Deployment skipped. Add VPS_HOST, VPS_USER and VPS_SSH_KEY in the repository secrets to deploy on each push to main."
+
       - name: Deploy to VPS
+        if: env.VPS_CONFIGURED == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
