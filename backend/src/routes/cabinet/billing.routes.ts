@@ -10,7 +10,7 @@ import { lineTotal, quoteBalance, recomputeInvoice } from '../../utils/billing';
 // Act catalogue at /api/cabinets/:cabinetId/acts; invoices, payments and quotes at /api/cabinets/:cabinetId/billing
 const router = Router({ mergeParams: true });
 
-const patientSelect = { select: { id: true, firstName: true, lastName: true, phone: true, cin: true, coverage: true, coverageNumber: true, address: true } };
+const patientSelect = { select: { id: true, firstName: true, lastName: true, phone: true, cin: true, coverage: true, coverageNumber: true, insuredName: true, complementaryInsurance: true, complementaryNumber: true, address: true } };
 const PAYMENT_METHODS = ['CASH', 'CARD', 'TRANSFER', 'CHECK'] as const;
 
 const itemInput = z.object({

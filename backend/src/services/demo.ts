@@ -46,29 +46,30 @@ function random(seed = 42) {
   return () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
 }
 
-type P = { firstName: string; lastName: string; sex: 'F' | 'M'; age: number; months?: number; coverage: string; phone: string; cin?: string; allergies?: string; medicalHistory?: string; currentTreatments?: string; general?: boolean };
+// For PRIVATE / MUTUELLE coverage, `complementary` is the insurer's name (as in the patient form).
+type P = { firstName: string; lastName: string; sex: 'F' | 'M'; age: number; months?: number; coverage: string; coverageNumber?: string; complementary?: string; insuredName?: string; phone: string; cin?: string; allergies?: string; medicalHistory?: string; currentTreatments?: string; general?: boolean };
 
 const PEOPLE: P[] = [
-  { firstName: 'Karim', lastName: 'El Amrani', sex: 'M', age: 42, coverage: 'CNOPS', phone: '0611111111', cin: 'BE123456', allergies: 'Pénicilline', medicalHistory: 'Hypertension artérielle traitée', currentTreatments: 'Amlodipine 5 mg' },
-  { firstName: 'Lina', lastName: 'Tazi', sex: 'F', age: 4, months: 3, coverage: 'AMO', phone: '0622222222' },
-  { firstName: 'Adam', lastName: 'Berrada', sex: 'M', age: 8, months: 2, coverage: 'MUTUELLE', phone: '0633333333' },
-  { firstName: 'Fatima Zahra', lastName: 'Chraibi', sex: 'F', age: 31, coverage: 'AMO', phone: '0644444444', cin: 'BK998877' },
+  { firstName: 'Karim', lastName: 'El Amrani', sex: 'M', age: 42, coverage: 'CNOPS', coverageNumber: '1234567', complementary: 'MGPAP', phone: '0611111111', cin: 'BE123456', allergies: 'Pénicilline', medicalHistory: 'Hypertension artérielle traitée', currentTreatments: 'Amlodipine 5 mg' },
+  { firstName: 'Lina', lastName: 'Tazi', sex: 'F', age: 4, months: 3, coverage: 'CNSS', coverageNumber: '154879632', insuredName: 'Mehdi Tazi (père)', phone: '0622222222' },
+  { firstName: 'Adam', lastName: 'Berrada', sex: 'M', age: 8, months: 2, coverage: 'PRIVATE', complementary: 'Wafa Assurance', coverageNumber: 'WA-778812', insuredName: 'Sara Berrada (mère)', phone: '0633333333' },
+  { firstName: 'Fatima Zahra', lastName: 'Chraibi', sex: 'F', age: 31, coverage: 'CNSS', coverageNumber: '198765432', complementary: 'AXA Assurance Maroc', phone: '0644444444', cin: 'BK998877' },
   { firstName: 'Mohamed', lastName: 'Ouazzani', sex: 'M', age: 67, coverage: 'CNOPS', phone: '0655555555', medicalHistory: 'Diabète de type 2', currentTreatments: 'Metformine 850 mg' },
-  { firstName: 'Salma', lastName: 'Kettani', sex: 'F', age: 25, coverage: 'NONE', phone: '0666666666' },
-  { firstName: 'Hicham', lastName: 'Benjelloun', sex: 'M', age: 55, coverage: 'AMO', phone: '0677777777', medicalHistory: 'Diabète de type 2, dyslipidémie', general: true },
+  { firstName: 'Salma', lastName: 'Kettani', sex: 'F', age: 25, coverage: 'AMO_TADAMON', phone: '0666666666' },
+  { firstName: 'Hicham', lastName: 'Benjelloun', sex: 'M', age: 55, coverage: 'CNSS', phone: '0677777777', medicalHistory: 'Diabète de type 2, dyslipidémie', general: true },
   { firstName: 'Nora', lastName: 'Lahlou', sex: 'F', age: 38, coverage: 'MUTUELLE', phone: '0661234501', allergies: 'Latex' },
-  { firstName: 'Youssef', lastName: 'Sqalli', sex: 'M', age: 29, coverage: 'AMO', phone: '0661234502' },
+  { firstName: 'Youssef', lastName: 'Sqalli', sex: 'M', age: 29, coverage: 'CNSS', phone: '0661234502' },
   { firstName: 'Imane', lastName: 'Fassi Fihri', sex: 'F', age: 46, coverage: 'CNOPS', phone: '0661234503', medicalHistory: 'Asthme' },
-  { firstName: 'Omar', lastName: 'Bennis', sex: 'M', age: 12, coverage: 'AMO', phone: '0661234504' },
-  { firstName: 'Rania', lastName: 'Alami', sex: 'F', age: 34, coverage: 'AMO', phone: '0661234505', general: true },
+  { firstName: 'Omar', lastName: 'Bennis', sex: 'M', age: 12, coverage: 'FAR', insuredName: 'Karim Bennis (père)', phone: '0661234504' },
+  { firstName: 'Rania', lastName: 'Alami', sex: 'F', age: 34, coverage: 'CNSS', phone: '0661234505', general: true },
   { firstName: 'Mehdi', lastName: 'Cherkaoui', sex: 'M', age: 51, coverage: 'MUTUELLE', phone: '0661234506', medicalHistory: 'Anticoagulants (AVK)', currentTreatments: 'Sintrom' },
   { firstName: 'Khadija', lastName: 'Naciri', sex: 'F', age: 72, coverage: 'CNOPS', phone: '0661234507', medicalHistory: 'Hypertension', general: true },
   { firstName: 'Anas', lastName: 'Belkadi', sex: 'M', age: 19, coverage: 'NONE', phone: '0661234508' },
-  { firstName: 'Soukaina', lastName: 'Hajji', sex: 'F', age: 27, coverage: 'AMO', phone: '0661234509' },
+  { firstName: 'Soukaina', lastName: 'Hajji', sex: 'F', age: 27, coverage: 'CNSS', phone: '0661234509' },
   { firstName: 'Reda', lastName: 'Mansouri', sex: 'M', age: 60, coverage: 'CNOPS', phone: '0661234510', general: true },
   { firstName: 'Ghita', lastName: 'Skalli', sex: 'F', age: 9, coverage: 'MUTUELLE', phone: '0661234511' },
-  { firstName: 'Tarik', lastName: 'Zniber', sex: 'M', age: 44, coverage: 'AMO', phone: '0661234512', allergies: 'Aspirine' },
-  { firstName: 'Houda', lastName: 'Berrechid', sex: 'F', age: 36, coverage: 'AMO', phone: '0661234513', general: true },
+  { firstName: 'Tarik', lastName: 'Zniber', sex: 'M', age: 44, coverage: 'CNSS', phone: '0661234512', allergies: 'Aspirine' },
+  { firstName: 'Houda', lastName: 'Berrechid', sex: 'F', age: 36, coverage: 'CNSS', phone: '0661234513', general: true },
   { firstName: 'Saad', lastName: 'Guessous', sex: 'M', age: 23, coverage: 'NONE', phone: '0661234514' },
   { firstName: 'Meriem', lastName: 'Tahiri', sex: 'F', age: 58, coverage: 'CNOPS', phone: '0661234515' },
 ];
@@ -109,7 +110,7 @@ export async function resetDemoCabinet() {
       data: {
         cabinetId, primaryPractitionerId: p.general ? generalist.id : dentist.id, ...consent,
         firstName: p.firstName, lastName: p.lastName, sex: p.sex, birthDate: yearsAgo(p.age, p.months || 0), phone: p.phone, cin: p.cin || null,
-        coverage: p.coverage, allergies: p.allergies || null, medicalHistory: p.medicalHistory || null, currentTreatments: p.currentTreatments || null,
+        coverage: p.coverage, coverageNumber: p.coverageNumber || null, complementaryInsurance: p.complementary || null, insuredName: p.insuredName || null, allergies: p.allergies || null, medicalHistory: p.medicalHistory || null, currentTreatments: p.currentTreatments || null,
         address: 'Casablanca',
       },
     }));

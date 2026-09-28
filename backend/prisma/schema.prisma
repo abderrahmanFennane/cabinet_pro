@@ -273,8 +273,14 @@ model Patient {
   phone               String?
   email               String?
   address             String?
-  coverage            String    @default("NONE") // AMO, CNOPS, MUTUELLE, NONE
-  coverageNumber      String?
+  // Basic coverage (régime de base): CNSS, CNOPS, AMO_TADAMON, FAR, MUTUELLE, PRIVATE, NONE
+  coverage            String    @default("NONE")
+  coverageNumber      String?   // N° d'immatriculation / d'affiliation
+  // Insured person when it is not the patient (child covered by a parent, spouse).
+  insuredName         String?
+  // Complementary cover: mutuelle or private insurer, and its member / policy number.
+  complementaryInsurance String?
+  complementaryNumber    String?
   bloodGroup          String?
   // Medical background (restricted to practitioners).
   medicalHistory      String?   @db.Text

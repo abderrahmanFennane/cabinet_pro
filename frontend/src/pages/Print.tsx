@@ -6,6 +6,7 @@ import { Printer } from 'lucide-react'
 import api from '../lib/api'
 import { practitionerName, useCabinetApi, useCabinetId } from '../lib/hooks'
 import { formatCurrency, formatDateFR } from '../lib/utils'
+import { insuranceText } from '../lib/insurance'
 import { Cabinet, Invoice, MedicalDocument, Patient, Prescription, Quote } from '../types'
 import { Button } from '../components/ui/button'
 import { LinesTable } from '../components/billing/BillingDetails'
@@ -95,7 +96,7 @@ export function PrintInvoice() {
         <div className="space-y-5">
           <div className="flex justify-between gap-6">
             <div><h1 className="text-xl font-bold">{Number(inv.paid) >= Number(inv.total) ? 'FACTURE ACQUITTÉE' : 'FACTURE'}</h1><p>N° {inv.number} · {formatDateFR(inv.date)}</p></div>
-            <div className="text-end"><p className="font-bold">{patientLine(inv.patient as any)}</p>{inv.patient.address && <p>{inv.patient.address}</p>}{inv.patient.cin && <p>CIN {inv.patient.cin}</p>}{inv.patient.coverage !== 'NONE' && <p>{t(`coverage.${inv.patient.coverage}`)} {inv.patient.coverageNumber || ''}</p>}</div>
+            <div className="text-end"><p className="font-bold">{patientLine(inv.patient as any)}</p>{inv.patient.address && <p>{inv.patient.address}</p>}{inv.patient.cin && <p>CIN {inv.patient.cin}</p>}{inv.patient.coverage !== 'NONE' && <p>{insuranceText(inv.patient, t).base}</p>}{inv.patient.insuredName && <p>Assuré : {inv.patient.insuredName}</p>}{insuranceText(inv.patient, t).complementary && <p>Complémentaire : {insuranceText(inv.patient, t).complementary}</p>}</div>
           </div>
           <LinesTable items={inv.items || []} currency={currency} />
           <div className="ms-auto w-64 space-y-1">

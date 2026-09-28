@@ -5,7 +5,8 @@ import { toast } from 'sonner'
 import { AlertTriangle } from 'lucide-react'
 import api from '../../lib/api'
 import { apiError, practitionerName, useAuth, useCabinetApi, useTeam } from '../../lib/hooks'
-import { Coverage, Patient } from '../../types'
+import { COVERAGES, Coverage, Patient } from '../../types'
+import { namesInsurer } from '../../lib/insurance'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -20,8 +21,25 @@ type Props = {
   onSaved?: (patient: Patient) => void
 }
 
+// Who each Moroccan basic coverage is for, shown under the choice.
+const COVERAGE_HINT: Record<Coverage, string> = {
+  CNSS: 'AMO des salariés du privé et des indépendants (CNSS).',
+  CNOPS: 'AMO des fonctionnaires et agents de l’État (CNOPS).',
+  AMO_TADAMON: 'Ex-RAMED : AMO prise en charge par l’État, gérée par la CNSS.',
+  FAR: 'Militaires et leurs familles (Forces armées royales).',
+  MUTUELLE: 'Mutuelle seule, sans AMO.',
+  PRIVATE: 'Assurance santé privée seule (contrat individuel ou de l’employeur).',
+  NONE: 'Le patient paie lui-même, sans remboursement.',
+}
+// Common complementary covers in Morocco; free text stays possible.
+const COMPLEMENTARY = [
+  'MGPAP', 'OMFAM', 'MODEP', 'CMIM', 'Mutuelle des FAR', 'Wafa Assurance', 'Sanlam (ex-Saham)', 'AXA Assurance Maroc', 'RMA',
+  'AtlantaSanad', 'Allianz Maroc', 'MAMDA-MCMA', 'La Marocaine Vie',
+]
+
 const empty = {
   firstName: '', lastName: '', sex: '', birthDate: '', cin: '', phone: '', email: '', address: '', coverage: 'NONE' as Coverage, coverageNumber: '',
+  insuredName: '', complementaryInsurance: '', complementaryNumber: '',
   primaryPractitionerId: '', consentData: true, consentReminders: true, notes: '',
   bloodGroup: '', allergies: '', medicalHistory: '', surgicalHistory: '', familyHistory: '', currentTreatments: '',
 }
@@ -66,7 +84,10 @@ export default function PatientFormDialog({ open, onOpenChange, patient, onSaved
     mutationFn: async () => {
       const payload: any = {
         firstName: form.firstName, lastName: form.lastName, sex: form.sex || null, birthDate: form.birthDate || null, cin: form.cin || null,
-        phone: form.phone || null, email: form.email || null, address: form.address || null, coverage: form.coverage, coverageNumber: form.coverageNumber || null,
+        phone: form.phone || null, email: form.email || null, address: form.address || null, coverage: form.coverage,
+        coverageNumber: form.coverage === 'NONE' ? null : form.coverageNumber || null, insuredName: form.coverage === 'NONE' ? null : form.insuredName || null,
+        complementaryInsurance: form.complementaryInsurance.trim() || null,
+        complementaryNumber: form.complementaryInsurance.trim() && !namesInsurer(form.coverage) ? form.complementaryNumber || null : null,
         primaryPractitionerId: form.primaryPractitionerId || null, consentData: form.consentData, consentReminders: form.consentReminders, notes: form.notes || null,
       }
       if (medical) {
@@ -122,14 +143,39 @@ export default function PatientFormDialog({ open, onOpenChange, patient, onSaved
             <div className="space-y-1.5"><Label htmlFor="address">Adresse</Label><Input id="address" value={form.address} onChange={set('address')} /></div>
           </fieldset>
 
-          <fieldset className="grid gap-3 sm:grid-cols-3">
-            <legend className="mb-2 text-sm font-semibold">Couverture et suivi</legend>
-            <div className="space-y-1.5"><Label htmlFor="coverage">Couverture</Label>
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="mb-2 text-sm font-semibold">Assurance maladie</legend>
+            <div className="space-y-1.5"><Label htmlFor="coverage">Couverture de base</Label>
               <NativeSelect id="coverage" value={form.coverage} onChange={set('coverage')}>
-                {(['AMO', 'CNOPS', 'MUTUELLE', 'NONE'] as Coverage[]).map(c => <option key={c} value={c}>{t(`coverage.${c}`)}</option>)}
+                {COVERAGES.map(c => <option key={c} value={c}>{t(`coverage.${c}`)}</option>)}
               </NativeSelect>
+              <p className="text-xs text-[#5A6B65]">{COVERAGE_HINT[form.coverage]}</p>
             </div>
-            <div className="space-y-1.5"><Label htmlFor="coverageNumber">N° d’affiliation</Label><Input id="coverageNumber" value={form.coverageNumber} onChange={set('coverageNumber')} disabled={form.coverage === 'NONE'} /></div>
+            {/* Private insurance or mutuelle alone: ask which company; otherwise this field is the top-up cover below. */}
+            {namesInsurer(form.coverage) && (
+              <div className="space-y-1.5"><Label htmlFor="complementaryInsurance">{form.coverage === 'MUTUELLE' ? 'Nom de la mutuelle' : 'Nom de l’assurance'}</Label>
+                <Input id="complementaryInsurance" list="complementary-list" value={form.complementaryInsurance} onChange={set('complementaryInsurance')} placeholder="ex. Wafa Assurance" />
+              </div>
+            )}
+            {form.coverage !== 'NONE' && (
+              <div className="space-y-1.5"><Label htmlFor="coverageNumber">{namesInsurer(form.coverage) ? 'N° d’adhérent / de police' : 'N° d’immatriculation'}</Label><Input id="coverageNumber" value={form.coverageNumber} onChange={set('coverageNumber')} /></div>
+            )}
+            {form.coverage !== 'NONE' && (
+              <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="insuredName">Assuré principal, si ce n’est pas le patient</Label><Input id="insuredName" value={form.insuredName} onChange={set('insuredName')} placeholder="ex. Mehdi Tazi (père)" /></div>
+            )}
+            {!namesInsurer(form.coverage) && (
+              <div className="space-y-1.5"><Label htmlFor="complementaryInsurance">Complémentaire (mutuelle ou assurance)</Label>
+                <Input id="complementaryInsurance" list="complementary-list" value={form.complementaryInsurance} onChange={set('complementaryInsurance')} placeholder="Aucune" />
+              </div>
+            )}
+            {!namesInsurer(form.coverage) && form.complementaryInsurance && (
+              <div className="space-y-1.5"><Label htmlFor="complementaryNumber">N° d’adhérent complémentaire</Label><Input id="complementaryNumber" value={form.complementaryNumber} onChange={set('complementaryNumber')} /></div>
+            )}
+            <datalist id="complementary-list">{COMPLEMENTARY.map(name => <option key={name} value={name} />)}</datalist>
+          </fieldset>
+
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="mb-2 text-sm font-semibold">Suivi</legend>
             <div className="space-y-1.5"><Label htmlFor="practitioner">Praticien référent</Label>
               <NativeSelect id="practitioner" value={form.primaryPractitionerId} onChange={set('primaryPractitionerId')}>
                 <option value="">—</option>

@@ -172,7 +172,8 @@ export interface AppSettings {
 
 // ─── Patients and agenda ───
 
-export type Coverage = 'AMO' | 'CNOPS' | 'MUTUELLE' | 'NONE'
+export type Coverage = 'CNSS' | 'CNOPS' | 'AMO_TADAMON' | 'FAR' | 'MUTUELLE' | 'PRIVATE' | 'NONE'
+export const COVERAGES: Coverage[] = ['CNSS', 'CNOPS', 'AMO_TADAMON', 'FAR', 'MUTUELLE', 'PRIVATE', 'NONE']
 export type Dentition = 'PRIMARY' | 'MIXED' | 'PERMANENT'
 
 export interface Patient {
@@ -188,6 +189,9 @@ export interface Patient {
   address: string | null
   coverage: Coverage
   coverageNumber: string | null
+  insuredName: string | null
+  complementaryInsurance: string | null
+  complementaryNumber: string | null
   primaryPractitionerId: string | null
   consentDataAt: string | null
   consentRemindersAt: string | null
@@ -360,6 +364,9 @@ export interface PatientRef {
   cin: string | null
   coverage: Coverage
   coverageNumber: string | null
+  insuredName?: string | null
+  complementaryInsurance?: string | null
+  complementaryNumber?: string | null
   address: string | null
 }
 

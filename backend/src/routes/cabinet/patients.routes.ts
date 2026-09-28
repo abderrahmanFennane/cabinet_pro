@@ -12,6 +12,10 @@ const router = Router({ mergeParams: true });
 const optionalDate = z.union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).nullable().optional()
   .transform(value => (value ? new Date(value) : value === null ? null : undefined));
 
+// Moroccan basic coverage: CNSS (private sector, self-employed) and CNOPS (public sector) run the AMO;
+// AMO Tadamon replaced RAMED; FAR for the armed forces; or a mutuelle / private insurer alone.
+const COVERAGES = ['CNSS', 'CNOPS', 'AMO_TADAMON', 'FAR', 'MUTUELLE', 'PRIVATE', 'NONE'] as const;
+
 const adminFields = {
   firstName: z.string().trim().min(1, 'Prénom requis'),
   lastName: z.string().trim().min(1, 'Nom requis'),
@@ -21,8 +25,11 @@ const adminFields = {
   phone: z.string().trim().max(30).nullable().optional(),
   email: z.string().trim().email('Email invalide').nullable().optional().or(z.literal('').transform(() => null)),
   address: z.string().trim().max(255).nullable().optional(),
-  coverage: z.enum(['AMO', 'CNOPS', 'MUTUELLE', 'NONE']).optional(),
+  coverage: z.enum(COVERAGES).optional(),
   coverageNumber: z.string().trim().max(50).nullable().optional(),
+  insuredName: z.string().trim().max(120).nullable().optional(),
+  complementaryInsurance: z.string().trim().max(80).nullable().optional(),
+  complementaryNumber: z.string().trim().max(50).nullable().optional(),
   primaryPractitionerId: z.string().nullable().optional(),
   consentData: z.boolean().optional(),
   consentReminders: z.boolean().optional(),
@@ -60,6 +67,9 @@ function serialize(patient: any, withMedical: boolean) {
     address: patient.address,
     coverage: patient.coverage,
     coverageNumber: patient.coverageNumber,
+    insuredName: patient.insuredName,
+    complementaryInsurance: patient.complementaryInsurance,
+    complementaryNumber: patient.complementaryNumber,
     primaryPractitionerId: patient.primaryPractitionerId,
     consentDataAt: patient.consentDataAt,
     consentRemindersAt: patient.consentRemindersAt,

@@ -6,6 +6,7 @@ import { ChevronRight, Plus, Search, Users } from 'lucide-react'
 import api from '../lib/api'
 import { useCabinetApi, useCabinetPath } from '../lib/hooks'
 import { Patient } from '../types'
+import { insuranceShort } from '../lib/insurance'
 import { PageHeader, EmptyState } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -57,7 +58,7 @@ export default function Patients() {
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary">{p.lastName[0]}{p.firstName[0]}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{p.lastName.toUpperCase()} {p.firstName}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{[p.age !== null && `${p.age} ans`, p.phone, p.cin && `CIN ${p.cin}`, p.coverage !== 'NONE' && t(`coverage.${p.coverage}`)].filter(Boolean).join(' · ')}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{[p.age !== null && `${p.age} ans`, p.phone, p.cin && `CIN ${p.cin}`, insuranceShort(p, t)].filter(Boolean).join(' · ')}</span>
                 </span>
                 <ChevronRight size={18} className="text-muted-foreground rtl:rotate-180" />
               </button>

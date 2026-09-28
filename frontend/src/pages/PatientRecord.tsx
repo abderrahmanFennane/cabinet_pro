@@ -7,6 +7,7 @@ import api from '../lib/api'
 import { practitionerName, useAuth, useCabinetApi, useCabinetPath, useTeam } from '../lib/hooks'
 import { cn, formatCurrency, formatDateFR, formatDateTimeFR } from '../lib/utils'
 import { Patient } from '../types'
+import { insuranceShort, insuranceText } from '../lib/insurance'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
 import PatientFormDialog from '../components/patient/PatientFormDialog'
@@ -73,7 +74,7 @@ export default function PatientRecord() {
       <PageHeader
         onBack={() => navigate(cabinetPath('/patients'))}
         title={`${patient.firstName} ${patient.lastName}`}
-        subtitle={[patient.age !== null && `${patient.age} ans`, patient.sex === 'F' ? 'Femme' : patient.sex === 'M' ? 'Homme' : null, t(`coverage.${patient.coverage}`), patient.cin && `CIN ${patient.cin}`].filter(Boolean).join(' · ')}
+        subtitle={[patient.age !== null && `${patient.age} ans`, patient.sex === 'F' ? 'Femme' : patient.sex === 'M' ? 'Homme' : null, insuranceShort(patient, t) || t('coverage.NONE'), patient.cin && `CIN ${patient.cin}`].filter(Boolean).join(' · ')}
         actions={(
           <div className="flex flex-wrap gap-2">
             {patient.phone && <Button variant="outline" asChild><a href={`tel:${patient.phone}`}><Phone size={16} className="me-1.5" />{patient.phone}</a></Button>}
@@ -116,7 +117,9 @@ export default function PatientRecord() {
                 <dt className="text-muted-foreground">Téléphone</dt><dd>{patient.phone || '—'}</dd>
                 <dt className="text-muted-foreground">Email</dt><dd className="break-all">{patient.email || '—'}</dd>
                 <dt className="text-muted-foreground">Adresse</dt><dd>{patient.address || '—'}</dd>
-                <dt className="text-muted-foreground">Couverture</dt><dd>{t(`coverage.${patient.coverage}`)}{patient.coverageNumber ? ` · ${patient.coverageNumber}` : ''}</dd>
+                <dt className="text-muted-foreground">Assurance</dt><dd>{insuranceText(patient, t).base}</dd>
+                {patient.insuredName && <><dt className="text-muted-foreground">Assuré principal</dt><dd>{patient.insuredName}</dd></>}
+                {patient.coverage !== 'PRIVATE' && patient.coverage !== 'MUTUELLE' && <><dt className="text-muted-foreground">Complémentaire</dt><dd>{insuranceText(patient, t).complementary || 'Aucune'}</dd></>}
                 <dt className="text-muted-foreground">Référent</dt><dd>{referent ? practitionerName(referent) : '—'}</dd>
                 <dt className="text-muted-foreground">Consentements</dt><dd>{patient.consentDataAt ? `Données ✓ (${formatDateFR(patient.consentDataAt)})` : 'Données ✗'} · {patient.consentRemindersAt ? 'Rappels ✓' : 'Rappels ✗'}</dd>
               </dl>
