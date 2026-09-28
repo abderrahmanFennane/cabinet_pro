@@ -63,7 +63,7 @@ export default function Plans() {
   const current = subscription?.plan
   const cabinet = subscription?.cabinet
   const end = cabinet?.subscriptionStatus === 'TRIALING' ? cabinet.trialEndsAt || cabinet.currentPeriodEnd : cabinet?.currentPeriodEnd
-  const price = (plan: Plan) => (Number(plan.monthlyPrice) === 0 ? t('sub.free') : t('sub.perMonth', { price: Number(plan.monthlyPrice).toLocaleString('fr-FR').replace(/s/g, '00a0') }))
+  const price = (plan: Plan) => (Number(plan.monthlyPrice) === 0 ? t('sub.free') : t('sub.perMonth', { price: Number(plan.monthlyPrice).toLocaleString('fr-FR').replace(/\s/g, ' ') }))
   const meter = (label: string, used: number, limit: number) => (
     <div className="grid gap-1.5">
       <div className="flex justify-between text-[0.9rem]"><span>{label}</span><span className="font-mono tabular-nums">{used} / {limit >= 999 ? t('sub.unlimited') : limit}</span></div>
