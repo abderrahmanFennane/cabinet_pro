@@ -31,6 +31,7 @@ export async function assertSeatAvailable(tx: Tx, cabinetId: string, role: strin
   const limit = isPractitioner ? cabinet.maxPractitioners : cabinet.maxAssistants;
   if (used >= limit) {
     const what = isPractitioner ? `${limit} médecin${limit > 1 ? 's' : ''}` : `${limit} assistant${limit > 1 ? 's' : ''}`;
-    throw new AppError(`Le plan ${cabinet.plan} de ce cabinet permet ${what}, déjà atteint. Passez à un plan supérieur (Abonnement) pour en ajouter.`, 409);
+    const plan = await tx.plan.findUnique({ where: { code: cabinet.plan }, select: { name: true } });
+    throw new AppError(`Le plan ${plan?.name || cabinet.plan} de ce cabinet permet ${what}, déjà atteint. Passez à un plan supérieur (Abonnement) pour en ajouter.`, 409);
   }
 }

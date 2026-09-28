@@ -17,7 +17,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../components/ui/dropdown-menu'
 import CredentialsDialog, { Credentials, generatePassword } from '../components/CredentialsDialog'
 
-type Quota = { practitioners: { used: number; limit: number }; assistants: { used: number; limit: number } }
+type Quota = { plan?: { code: string; name: string }; practitioners: { used: number; limit: number }; assistants: { used: number; limit: number } }
+const UNLIMITED = 999
 type UserRow = User & { cabinet?: { id: string; name: string } | null }
 const SPECIALTIES: Specialty[] = ['DENTISTRY', 'GENERAL', 'PEDIATRICS', 'GYNECOLOGY', 'OPHTHALMOLOGY', 'CARDIOLOGY', 'DERMATOLOGY', 'PHYSIOTHERAPY', 'PSYCHIATRY']
 const empty = { firstName: '', lastName: '', title: '', email: '', phone: '', password: '', role: Role.ASSISTANT as Role, specialty: '' as '' | Specialty, seesAllPatients: false, cabinetId: '' }
@@ -89,7 +90,7 @@ export default function Users({ cabinetId: cabinetProp, embedded = false }: Prop
   useEffect(() => {
     if (!editing) return
     setForm(editing === 'new'
-      ? { ...empty, role: platform ? Role.OWNER : roles[roles.length - 1], password: generatePassword(), cabinetId: cabinetFilter }
+      ? { ...empty, role: platform ? Role.OWNER : [Role.ASSISTANT, Role.PRACTITIONER, Role.OWNER].find(r => roles.includes(r) && !roleFull(r)) || roles[roles.length - 1], password: generatePassword(), cabinetId: cabinetFilter }
       : { firstName: editing.firstName, lastName: editing.lastName, title: editing.title || '', email: editing.email, phone: editing.phone || '', password: '', role: editing.role, specialty: editing.specialty || '', seesAllPatients: !!editing.seesAllPatients, cabinetId: editing.cabinetId || '' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing])
@@ -138,14 +139,52 @@ export default function Users({ cabinetId: cabinetProp, embedded = false }: Prop
   const needsCabinet = editing === 'new' && platform && form.role !== Role.SUPER_ADMIN
   const canRemove = (u: UserRow) => u.id !== user?.id && (superAdmin || u.role !== Role.OWNER)
 
-  const addButton = <Button onClick={() => setEditing('new')}><Plus size={17} className="me-1.5" />{platform ? 'Nouvel utilisateur' : 'Ajouter un membre'}</Button>
-  const quotaText = quota ? `Praticiens ${quota.practitioners.used}/${quota.practitioners.limit} · Assistants ${quota.assistants.used}/${quota.assistants.limit >= 999 ? 'illimité' : quota.assistants.limit}` : undefined
+  // Seats left in the cabinet's plan: a full role cannot be chosen, and "add" explains why when everything is full.
+  const seatsLeft = (r: Role) => !quota ? Infinity
+    : r === Role.ASSISTANT ? (quota.assistants.limit >= UNLIMITED ? Infinity : quota.assistants.limit - quota.assistants.used)
+    : r === Role.SUPER_ADMIN ? Infinity : quota.practitioners.limit - quota.practitioners.used
+  function roleFull(r: Role) { return !platform && seatsLeft(r) <= 0 }
+  const allFull = !platform && roles.every(roleFull)
+  const upgradeLink = superAdmin ? `/cabinets/${cabinetId}?tab=subscription` : '/pricing'
+  const addButton = (
+    <Button onClick={() => setEditing('new')} disabled={allFull} title={allFull ? 'Toutes les places de votre plan sont utilisées' : undefined}>
+      <Plus size={17} className="me-1.5" />{platform ? 'Nouvel utilisateur' : 'Ajouter un membre'}
+    </Button>
+  )
+  const meter = (label: string, used: number, limit: number) => (
+    <div className="grid gap-1.5">
+      <div className="flex justify-between gap-3 text-[0.9rem]"><span>{label}</span><span className="font-mono tabular-nums">{used} / {limit >= UNLIMITED ? 'illimité' : limit}</span></div>
+      <div className="h-2 overflow-hidden rounded-full bg-[#E9EFEC]">
+        <i className={cn('block h-full rounded-full', limit < UNLIMITED && used >= limit ? 'bg-[#99600B]' : 'bg-primary')} style={{ width: `${limit >= UNLIMITED ? 8 : Math.min(100, (used / Math.max(1, limit)) * 100)}%` }} />
+      </div>
+    </div>
+  )
+  const planCard = !platform && quota && (
+    <section className="grid gap-4 rounded-[14px] border border-[#D8E1DD] bg-white p-[18px] md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      <div className="grid content-start gap-1">
+        <span className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[#5A6B65]">Places incluses dans le plan</span>
+        <b className="text-[1.25rem] font-extrabold">{quota.plan?.name || 'Plan actuel'}</b>
+        <p className="text-[0.9rem] text-[#5A6B65]">
+          {allFull ? 'Toutes les places sont utilisées. ' : `Il reste ${[
+            seatsLeft(Role.PRACTITIONER) > 0 && `${seatsLeft(Role.PRACTITIONER)} place(s) de médecin`,
+            seatsLeft(Role.ASSISTANT) === Infinity ? 'des places d’assistant illimitées' : seatsLeft(Role.ASSISTANT) > 0 && `${seatsLeft(Role.ASSISTANT)} place(s) d’assistant`,
+          ].filter(Boolean).join(' et ') || 'aucune place'}. `}
+          <Link to={upgradeLink} className="font-semibold text-primary hover:underline">{allFull ? 'Passer à un plan supérieur' : 'Voir les plans'}</Link>
+        </p>
+      </div>
+      <div className="grid content-center gap-3.5">
+        {meter('Médecins (titulaire compris)', quota.practitioners.used, quota.practitioners.limit)}
+        {meter('Assistant(e)s', quota.assistants.used, quota.assistants.limit)}
+      </div>
+    </section>
+  )
 
   return (
     <div className="grid gap-5">
       {embedded
-        ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-[#5A6B65]">{quotaText}</p>{addButton}</div>
-        : <PageHeader title={platform ? t('adminPage.usersTitle') : t('nav.team')} subtitle={platform ? `${users.length} compte(s) sur la plateforme` : quotaText} actions={addButton} />}
+        ? <div className="flex flex-wrap items-center justify-end gap-3">{addButton}</div>
+        : <PageHeader title={platform ? t('adminPage.usersTitle') : t('nav.team')} subtitle={platform ? `${users.length} compte(s) sur la plateforme` : 'Créez les comptes de vos assistant(e)s et de vos confrères. Chacun se connecte avec son email.'} actions={addButton} />}
+      {planCard}
 
       {platform && (
         <div className="flex flex-wrap items-center gap-2.5">
@@ -212,7 +251,17 @@ export default function Users({ cabinetId: cabinetProp, embedded = false }: Prop
             {canPickRole && roles.length > 1 && (
               <div className="space-y-1.5 sm:col-span-2"><Label>Type de compte</Label>
                 <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                  {roles.map(r => <button key={r} type="button" aria-pressed={form.role === r} onClick={() => setForm(f => ({ ...f, role: r }))} className={cn('min-h-[44px] rounded-xl border px-2 text-sm font-semibold', form.role === r ? 'border-primary bg-[#DCEEE7] text-primary' : 'border-[#D8E1DD] hover:bg-[#E9EFEC]')}>{t(`roles.${r}`)}</button>)}
+                  {roles.map(r => {
+                    // Only a new account takes a seat; changing an existing member's role is checked by the server.
+                    const full = editing === 'new' && roleFull(r)
+                    return (
+                      <button key={r} type="button" aria-pressed={form.role === r} disabled={full} onClick={() => setForm(f => ({ ...f, role: r }))}
+                        className={cn('grid min-h-[44px] content-center rounded-xl border px-2 py-1 text-sm font-semibold', form.role === r ? 'border-primary bg-[#DCEEE7] text-primary' : 'border-[#D8E1DD] hover:bg-[#E9EFEC]', full && 'cursor-not-allowed opacity-50 hover:bg-transparent')}>
+                        {t(`roles.${r}`)}
+                        {full && <span className="text-[0.7rem] font-medium text-[#99600B]">Limite du plan atteinte</span>}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}

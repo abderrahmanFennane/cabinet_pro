@@ -52,9 +52,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     }
     const users = await prisma.user.findMany({ where, include: userInclude, orderBy: [{ role: 'asc' }, { lastName: 'asc' }] });
     const quotaCabinetId = where.cabinetId as string | undefined;
-    const cabinet = quotaCabinetId ? await prisma.cabinet.findUnique({ where: { id: quotaCabinetId }, select: { maxPractitioners: true, maxAssistants: true } }) : null;
+    const cabinet = quotaCabinetId ? await prisma.cabinet.findUnique({ where: { id: quotaCabinetId }, select: { plan: true, maxPractitioners: true, maxAssistants: true } }) : null;
+    const plan = cabinet ? await prisma.plan.findUnique({ where: { code: cabinet.plan }, select: { code: true, name: true } }) : null;
     const meta = cabinet ? {
       quota: {
+        plan: { code: cabinet.plan, name: plan?.name || cabinet.plan },
         practitioners: { used: users.filter(u => u.role === 'OWNER' || u.role === 'PRACTITIONER').length, limit: cabinet.maxPractitioners },
         assistants: { used: users.filter(u => u.role === 'ASSISTANT').length, limit: cabinet.maxAssistants },
       },

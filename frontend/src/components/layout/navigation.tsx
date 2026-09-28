@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { Building2, CreditCard, FileClock, Home, Layers, MoreHorizontal, Settings, UsersRound, Wallet } from 'lucide-react'
+import { Building2, FileClock, Home, Layers, MoreHorizontal, Settings, UserPlus, UsersRound, Wallet } from 'lucide-react'
 import { useAuth, useCabinetId } from '../../lib/hooks'
 import { Role } from '../../types'
 import { PermissionKey } from '../../types/permissions'
@@ -27,14 +27,15 @@ const cabinetItems: NavItem[] = [
   },
   { labelKey: 'nav.patients', icon: <UsersRound size={20} />, permissions: ['MANAGE_PATIENTS'], tabs: [{ to: '/patients', labelKey: 'nav.patients' }] },
   { labelKey: 'nav.payments', icon: <Wallet size={20} />, permissions: ['MANAGE_BILLING'], tabs: [{ to: '/billing', labelKey: 'nav.payments' }] },
+  // The owner creates his assistants' and colleagues' accounts here, within his plan's limits.
+  { labelKey: 'nav.team', icon: <UserPlus size={20} />, permissions: ['MANAGE_TEAM'], roles: [Role.OWNER], tabs: [{ to: '/team', labelKey: 'nav.team' }] },
   {
     labelKey: 'nav.myCabinet', icon: <Settings size={20} />, permissions: ['MANAGE_SETTINGS'], roles: [Role.OWNER, Role.SUPER_ADMIN],
     tabs: [
       { to: '/settings', labelKey: 'nav.settings' },
-      { to: '/team', labelKey: 'nav.team', roles: [Role.OWNER], permissions: ['MANAGE_TEAM'] },
+      { to: '/pricing', labelKey: 'nav.subscription', roles: [Role.OWNER], permissions: ['MANAGE_SUBSCRIPTION'] },
     ],
   },
-  { labelKey: 'nav.subscription', icon: <CreditCard size={20} />, permissions: ['MANAGE_SUBSCRIPTION'], roles: [Role.OWNER], tabs: [{ to: '/pricing', labelKey: 'nav.subscription' }] },
 ]
 
 const platformItems: NavItem[] = [
