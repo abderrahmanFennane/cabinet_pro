@@ -7,6 +7,8 @@ import { authenticate, requirePermissions, requireRoles } from '../middleware/au
 import { AppError } from '../middleware/error';
 import { copyDefaultActs, planQuotas } from '../services/cabinet-setup';
 import { SPECIALTIES } from '../types/permissions';
+import { resetDemoCabinet } from '../services/demo';
+import { writeAuditLog } from '../utils/audit';
 
 // Cabinet records: the Super Admin manages every cabinet (F-SA-01); the owner reads and edits their own settings.
 const router = Router();
@@ -135,6 +137,15 @@ router.post('/', ...superAdmin, async (req: Request, res: Response, next: NextFu
       return created;
     });
     sendSuccess(res, serialize(cabinet), 'Cabinet créé', undefined, 201);
+  } catch (err) { next(err); }
+});
+
+/** Rebuilds the demo cabinet with fresh fictitious data dated today (F-SA-03). */
+router.post('/demo/reset', ...superAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const cabinet = await resetDemoCabinet();
+    void writeAuditLog({ userId: req.user!.id, cabinetId: cabinet.id, action: 'DEMO_RESET', method: req.method, path: req.originalUrl, status: 200 });
+    sendSuccess(res, { id: cabinet.id }, 'Cabinet de démonstration remis à zéro');
   } catch (err) { next(err); }
 });
 

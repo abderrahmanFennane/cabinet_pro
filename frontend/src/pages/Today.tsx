@@ -8,7 +8,7 @@ import { Plus, UserPlus } from 'lucide-react'
 import api from '../lib/api'
 import { practitionerName, useAuth, useCabinetApi, useCabinetPath, useTeam } from '../lib/hooks'
 import { cn, formatCurrency } from '../lib/utils'
-import { Appointment, AppointmentStatus, CabinetDashboard, Role } from '../types'
+import { Appointment, AppointmentStatus, CabinetDashboard, Invoice, Role } from '../types'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
 import AppointmentDialog from '../components/agenda/AppointmentDialog'
@@ -41,6 +41,8 @@ const ageOf = (birthDate: string | null | undefined) => {
   if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) age--
   return age
 }
+/** 35 min, or 4 h 05 once it passes an hour. */
+const duration = (minutes: number) => (minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`)
 const patientLabel = (a: Appointment) => (a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : '—')
 
 /** Home of every cabinet user: the day at a glance, with one obvious next action. */
@@ -72,6 +74,13 @@ export default function Today() {
   const doctorView = user?.role === Role.OWNER || user?.role === Role.PRACTITIONER
   const canTreat = hasPermissions('MANAGE_CONSULTATIONS')
   const canBill = hasPermissions('MANAGE_BILLING')
+  // Patients who still owe something: only they get an "Encaisser" button.
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices', cabinetApi, 'unpaid'],
+    queryFn: async () => (await api.get(`${cabinetApi}/billing/invoices`)).data.data as Invoice[],
+    enabled: canBill,
+  })
+  const owing = new Set(invoices.filter(inv => inv.status === 'OPEN' || inv.status === 'PARTIAL').map(inv => inv.patient.id))
   const currency = user?.cabinet?.currency || 'MAD'
   const locale = i18n.language.startsWith('ar') ? ar : i18n.language.startsWith('en') ? enGB : fr
   const dayLabel = format(new Date(), 'EEEE d MMMM', { locale }).replace(/^./, c => c.toUpperCase())
@@ -94,7 +103,7 @@ export default function Today() {
     if (a.status === 'PLANNED' || a.status === 'CONFIRMED') return <Button size="sm" onClick={stop(() => setStatus.mutate({ id: a.id, status: 'ARRIVED' }))}>{t('today.checkIn')}</Button>
     if (a.status === 'ARRIVED') return <Button size="sm" variant="outline" onClick={stop(() => startVisit(a))}>{t('today.sendIn')}</Button>
     if (a.status === 'IN_CONSULTATION' && doctorView && (a.practitionerId === user?.id || user?.role === Role.OWNER)) return <Button size="sm" variant="outline" onClick={stop(() => setStatus.mutate({ id: a.id, status: 'DONE' }))}>{t('today.finish')}</Button>
-    if (a.status === 'DONE' && canBill) return <Button size="sm" variant="outline" onClick={stop(() => openFile(a, 'billing'))}>Encaisser</Button>
+    if (a.status === 'DONE' && canBill && a.patientId && owing.has(a.patientId)) return <Button size="sm" variant="outline" onClick={stop(() => openFile(a, 'billing'))}>Encaisser</Button>
     return null
   }
 
@@ -114,7 +123,7 @@ export default function Today() {
       <div className="min-w-0">
         <b className="block truncate font-semibold">{patientLabel(a)}</b>
         <span className="block truncate text-[0.86rem] text-[#5A6B65]">
-          {[a.walkIn ? t('appointment.walkIn') : null, a.reason, showDoctor ? practitionerName(a.practitioner) : null, a.waitingMinutes ? t('today.waited', { count: a.waitingMinutes }) : null].filter(Boolean).join(' · ')}
+          {[a.walkIn ? t('appointment.walkIn') : null, a.reason, showDoctor ? practitionerName(a.practitioner) : null, a.waitingMinutes ? t('today.waited', { time: duration(a.waitingMinutes) }) : null].filter(Boolean).join(' · ')}
         </span>
       </div>
       <div className="col-span-2 flex flex-wrap items-center gap-2.5 sm:col-span-1 sm:justify-end">
@@ -176,7 +185,7 @@ export default function Today() {
   const current = mine.find(a => a.status === 'IN_CONSULTATION') || mine.find(a => a.status === 'ARRIVED') || mine.find(a => a.status === 'PLANNED' || a.status === 'CONFIRMED')
   const age = current ? ageOf(current.patient?.birthDate) : null
   const label = !current ? '' : current.status === 'IN_CONSULTATION' ? t('today.withYou')
-    : current.status === 'ARRIVED' ? t('today.waitingFor', { count: current.waitingMinutes || 0 }) : t('today.nextAt', { time: format(new Date(current.date), 'HH:mm') })
+    : current.status === 'ARRIVED' ? t('today.waitingFor', { time: duration(current.waitingMinutes || 0) }) : t('today.nextAt', { time: format(new Date(current.date), 'HH:mm') })
 
   return (
     <div className="grid gap-5">

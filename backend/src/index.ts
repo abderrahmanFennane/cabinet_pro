@@ -20,6 +20,7 @@ import appSettingsRoutes from './routes/app-settings.routes';
 import messagesRoutes from './routes/messages.routes';
 import auditRoutes from './routes/audit.routes';
 import { startReminderJobs } from './jobs/reminders';
+import { startDemoRefreshJob } from './services/demo';
 import { sendSuccess } from './utils/response';
 
 const app = express();
@@ -61,6 +62,7 @@ app.use(errorHandler);
 app.listen(config.port, () => {
   console.log(`🚀 Serveur démarré sur le port ${config.port}`);
   startReminderJobs();
+  startDemoRefreshJob();
 });
 
 export default app;

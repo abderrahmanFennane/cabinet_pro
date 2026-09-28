@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Building2, CalendarClock, Eye, MessageCircle, MessageSquareText, MoreHorizontal, Plus, Search, ShieldCheck, Trash2, Users } from 'lucide-react'
+import { Building2, CalendarClock, Eye, MessageCircle, MessageSquareText, MoreHorizontal, Plus, RotateCcw, Search, ShieldCheck, Trash2, Users } from 'lucide-react'
 import api from '../lib/api'
 import { apiError } from '../lib/hooks'
 import { cn, formatCurrency, formatDateFR, formatDateTimeFR } from '../lib/utils'
@@ -78,6 +78,11 @@ export default function CabinetList() {
     onSuccess: () => { toast.success('Statut mis à jour'); refresh() },
     onError: (err) => toast.error(apiError(err)),
   })
+  const resetDemo = useMutation({
+    mutationFn: () => api.post('/cabinets/demo/reset'),
+    onSuccess: () => { toast.success('Démo remise à zéro, avec un planning daté d’aujourd’hui'); refresh() },
+    onError: (err) => toast.error(apiError(err)),
+  })
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/cabinets/${id}`),
     onSuccess: () => { toast.success('Cabinet supprimé'); refresh() },
@@ -139,8 +144,11 @@ export default function CabinetList() {
 
       {demo && (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] bg-[#EEE7F8] px-[18px] py-4 text-[#6746A8]">
-          <div><b className="block text-[1.02rem]">Cabinet de démonstration</b><span className="text-[0.9rem]">Patients fictifs, pour les démos commerciales et la formation.</span></div>
+          <div><b className="block text-[1.02rem]">Cabinet de démonstration</b><span className="text-[0.9rem]">Patients fictifs, pour les démos et la formation. Remise à jour chaque nuit avec un planning du jour.</span></div>
           <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" disabled={resetDemo.isPending} onClick={() => resetDemo.mutate()} title="Efface ce qui a été saisi pendant les démos et recrée des patients fictifs">
+              <RotateCcw size={15} className={cn('me-1', resetDemo.isPending && 'animate-spin')} />{resetDemo.isPending ? 'Remise à zéro…' : 'Remettre à zéro'}
+            </Button>
             <Button size="sm" variant="outline" onClick={() => navigate(`/users?cabinetId=${demo.id}`)}><Users size={15} className="me-1" />Comptes de démo</Button>
             <Button size="sm" className="bg-[#6746A8] hover:bg-[#553990]" onClick={() => open(demo)}><Eye size={15} className="me-1" />Ouvrir la démo</Button>
           </div>

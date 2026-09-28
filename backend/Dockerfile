@@ -12,7 +12,6 @@ COPY src ./src
 
 RUN npx prisma generate
 RUN npm run build
-RUN npx tsc --target ES2020 --module commonjs --esModuleInterop --skipLibCheck --rootDir ./prisma --outDir ./dist-prisma ./prisma/seed.ts
 
 FROM node:20-alpine AS runner
 
@@ -28,7 +27,6 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/dist-prisma/seed.js ./prisma-dist/seed.js
 
 EXPOSE 4100
 

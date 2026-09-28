@@ -8,7 +8,8 @@ npx prisma migrate deploy
 
 if [ "${SEED_DATABASE:-false}" = "true" ]; then
 	echo "Seeding requested..."
-	node prisma-dist/seed.js
+	# The build compiles prisma/seed.ts together with src (see tsconfig include).
+	node dist/prisma/seed.js
 fi
 
 echo "Starting backend..."

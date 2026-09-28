@@ -5,3 +5,4 @@ dist-prisma/
 *.log
 backend/uploads/
 backend/private-uploads/
+frontend/__shot.html
