@@ -18,6 +18,7 @@ model User {
   firstName       String
   lastName        String
   title           String?   // "Dr", "Pr"...
+  inpe            String?   // INPE: national identifier of the health professional (CNSS care sheet)
   phone           String?
   avatar          String?
   role            String    @default("ASSISTANT")
@@ -37,6 +38,7 @@ model User {
   dentalActs      DentalAct[]
   treatmentPlans  TreatmentPlan[]
   passwordResets  PasswordReset[]
+  clinicalRecords ClinicalRecord[]
 
   @@index([role])
   @@index([cabinetId])
@@ -52,6 +54,8 @@ model Cabinet {
   logo               String?
   // Printed on prescriptions and invoices (INPE, ICE, order registration...).
   letterhead         String?   @db.Text
+  // JSON: field positions (mm) for printing on the official CNSS care sheet
+  careSheetLayout    String?   @db.Text
   currency           String    @default("MAD")
   specialty          String    @default("DENTISTRY")
   isDemo             Boolean   @default(false)
@@ -88,6 +92,7 @@ model Cabinet {
   toothStates         ToothState[]
   dentalActs          DentalAct[]
   treatmentPlans      TreatmentPlan[]
+  clinicalRecords     ClinicalRecord[]
   accessLogs          PatientAccessLog[]
   supportGrants       SupportAccessGrant[]
   subscriptionHistory SubscriptionHistory[]
@@ -310,6 +315,7 @@ model Patient {
   toothStates    ToothState[]
   dentalActs     DentalAct[]
   treatmentPlans TreatmentPlan[]
+  clinicalRecords ClinicalRecord[]
 
   @@index([cabinetId, lastName])
   @@index([cabinetId, phone])
@@ -478,6 +484,8 @@ model Act {
   usesFaces      Boolean   @default(false)
   // Tooth state after the act is done (e.g. EXTRACTION -> MISSING).
   resultingState String?
+  // NGAP key letter and rating printed on the CNSS care sheet, e.g. "C", "CS", "D 30"
+  ngap           String?
   isActive       Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -687,4 +695,28 @@ model PasswordReset {
   createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
+}
+
+/// Structured data of a specialty module (eye exam, growth measure, vaccine, pregnancy, lesion,
+/// physiotherapy session...). `kind` says which; `data` is JSON checked by the module's schema.
+model ClinicalRecord {
+  id             String    @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  practitionerId String
+  practitioner   User      @relation(fields: [practitionerId], references: [id], onDelete: Restrict)
+  specialty      String
+  kind           String
+  date           DateTime  @default(now())
+  data           String    @db.Text
+  // Visible to its author only (psychotherapy notes).
+  private        Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@index([cabinetId, patientId, specialty, date])
+  @@index([patientId, kind])
 }

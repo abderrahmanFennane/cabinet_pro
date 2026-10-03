@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +6,8 @@ import { AlertTriangle, CalendarPlus, Lock, Pencil, Phone, Wallet } from 'lucide
 import api from '../lib/api'
 import { practitionerName, useAuth, useCabinetApi, useCabinetPath, useTeam } from '../lib/hooks'
 import { cn, formatCurrency, formatDateFR, formatDateTimeFR } from '../lib/utils'
-import { Patient } from '../types'
+import { Patient, Specialty } from '../types'
+import { SPECIALTY_MODULES } from '../specialties/registry'
 import { insuranceShort, insuranceText } from '../lib/insurance'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
@@ -19,7 +20,7 @@ import FilesTab from '../components/patient/FilesTab'
 import PatientBillingTab from '../components/patient/PatientBillingTab'
 import TimelineTab from '../components/patient/TimelineTab'
 
-type TabKey = 'summary' | 'dental' | 'consultations' | 'documents' | 'billing'
+type TabKey = 'summary' | 'dental' | 'consultations' | 'documents' | 'billing' | `mod-${Specialty}`
 // Older links pointed to tabs that are now merged into another one.
 const MERGED: Record<string, TabKey> = { files: 'documents', timeline: 'summary' }
 
@@ -42,9 +43,19 @@ export default function PatientRecord() {
   })
 
   const medical = hasPermissions('VIEW_MEDICAL')
-  const dentist = medical && hasPermissions('DENTAL_CHART') && (user?.specialty === 'DENTISTRY' || user?.role === 'SUPER_ADMIN')
+  // Specialty modules shown: the doctor's own; the owner and the Super Admin also see the other specialties of the team
+  // (multi-specialty cabinet), so the record shows every module that follows the patient.
+  const teamSpecialties = team.filter(m => m.role === 'OWNER' || m.role === 'PRACTITIONER').map(m => m.specialty).filter(Boolean) as Specialty[]
+  const moduleSpecialties: Specialty[] = !medical ? [] : [...new Set([
+    user?.specialty,
+    ...(user?.role === 'OWNER' || user?.role === 'SUPER_ADMIN' ? [...teamSpecialties, user?.cabinet?.specialty] : []),
+  ].filter(Boolean) as Specialty[])]
+  const dentist = moduleSpecialties.includes('DENTISTRY') && hasPermissions('DENTAL_CHART')
+  const modules = moduleSpecialties.filter(code => code !== 'DENTISTRY').map(code => SPECIALTY_MODULES[code]).filter(m => m?.component)
+  const ownModule = user?.specialty && user.specialty !== 'DENTISTRY' && modules.find(m => m.code === user.specialty)
   const tabs: { key: TabKey; label: string; show: boolean }[] = [
     { key: 'dental', label: 'Dents', show: dentist },
+    ...modules.map(m => ({ key: `mod-${m.code}` as TabKey, label: m.tab, show: true })),
     { key: 'consultations', label: 'Consultations', show: medical },
     { key: 'documents', label: 'Documents', show: medical || hasPermissions('PRINT_DOCUMENTS') },
     { key: 'billing', label: 'Paiements', show: hasPermissions('MANAGE_BILLING') },
@@ -53,7 +64,11 @@ export default function PatientRecord() {
   const visible = tabs.filter(tab => tab.show)
   const consultFrom = searchParams.get('consult')
   const asked = searchParams.get('tab')
-  const requested = (asked ? MERGED[asked] || asked : consultFrom ? 'consultations' : dentist ? 'dental' : 'summary') as TabKey
+  const requested = (asked ? MERGED[asked] || asked
+    : consultFrom ? 'consultations'
+    : user?.specialty === 'DENTISTRY' && dentist ? 'dental'
+    : ownModule ? `mod-${ownModule.code}`
+    : dentist ? 'dental' : modules[0] ? `mod-${modules[0].code}` : 'summary') as TabKey
   const tab = visible.some(x => x.key === requested) ? requested : 'summary'
   const setTab = (key: TabKey) => {
     const next = new URLSearchParams(searchParams)
@@ -147,6 +162,14 @@ export default function PatientRecord() {
           </div>
         )}
         {tab === 'dental' && <DentalTab patient={patient} currency={currency} />}
+        {modules.map(m => {
+          const Module = m.component!
+          return tab === `mod-${m.code}` && (
+            <Suspense key={m.code} fallback={<p className="py-8 text-center text-sm text-muted-foreground">Chargement…</p>}>
+              <Module patient={patient} />
+            </Suspense>
+          )
+        })}
         {tab === 'consultations' && <ConsultationsTab patient={patient} appointmentId={consultFrom} />}
         {tab === 'documents' && (
           <div className="space-y-6">

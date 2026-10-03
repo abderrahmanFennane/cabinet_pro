@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../config/prisma';
-import { DENTAL_ACTS, GENERAL_ACTS } from '../data/catalogue';
+import { ACTS_BY_SPECIALTY, DENTAL_ACTS, GENERAL_ACTS } from '../data/catalogue';
 
 /**
  * Demo cabinet filled with fictitious patients (F-SA-03), for sales demos, training and support.
@@ -9,7 +9,18 @@ import { DENTAL_ACTS, GENERAL_ACTS } from '../data/catalogue';
  */
 
 const DEMO_PASSWORD = 'Demo1234!';
-export const DEMO_ACCOUNTS = ['demo.dentiste@cabinetpro.ma', 'demo.generaliste@cabinetpro.ma', 'demo.assistant@cabinetpro.ma'];
+// One doctor per specialty, so the Super Admin can show every specialty's interface in the demo.
+const SPECIALISTS = [
+  { specialty: 'OPHTHALMOLOGY', email: 'demo.ophtalmo@cabinetpro.ma', firstName: 'Leila', lastName: 'Kettani', prefix: 'OPH' },
+  { specialty: 'PEDIATRICS', email: 'demo.pediatre@cabinetpro.ma', firstName: 'Hamza', lastName: 'Bennis', prefix: 'PED' },
+  { specialty: 'GYNECOLOGY', email: 'demo.gyneco@cabinetpro.ma', firstName: 'Meriem', lastName: 'Sqalli', prefix: 'GYN' },
+  { specialty: 'CARDIOLOGY', email: 'demo.cardio@cabinetpro.ma', firstName: 'Adil', lastName: 'Lahlou', prefix: 'CAR' },
+  { specialty: 'DERMATOLOGY', email: 'demo.dermato@cabinetpro.ma', firstName: 'Ines', lastName: 'Ouazzani', prefix: 'DER' },
+  { specialty: 'PHYSIOTHERAPY', email: 'demo.kine@cabinetpro.ma', firstName: 'Karim', lastName: 'Fassi', prefix: 'KIN' },
+  { specialty: 'PSYCHIATRY', email: 'demo.psy@cabinetpro.ma', firstName: 'Nadia', lastName: 'Berrada', prefix: 'PSY' },
+] as const;
+
+export const DEMO_ACCOUNTS = ['demo.dentiste@cabinetpro.ma', 'demo.generaliste@cabinetpro.ma', 'demo.assistant@cabinetpro.ma', ...SPECIALISTS.map(s => s.email)];
 
 /** Removes a cabinet and its data in dependency order (some relations are RESTRICT on purpose). */
 async function wipeCabinet(cabinetId: string) {
@@ -98,7 +109,17 @@ export async function resetDemoCabinet() {
   const generalist = await prisma.user.create({ data: { email: DEMO_ACCOUNTS[1], password, title: 'Dr', firstName: 'Youssef', lastName: 'Alaoui', phone: '0600000002', role: 'PRACTITIONER', specialty: 'GENERAL', cabinetId } });
   const assistant = await prisma.user.create({ data: { email: DEMO_ACCOUNTS[2], password, firstName: 'Nadia', lastName: 'Idrissi', phone: '0600000003', role: 'ASSISTANT', cabinetId } });
 
-  const catalogue = [...DENTAL_ACTS.map(a => ({ ...a, specialty: 'DENTISTRY' })), ...GENERAL_ACTS.map(a => ({ ...a, specialty: 'GENERAL', code: `G-${a.code}` }))];
+  const specialist: Record<string, { id: string }> = {};
+  for (const [i, s] of SPECIALISTS.entries()) {
+    specialist[s.specialty] = await prisma.user.create({ data: { email: s.email, password, title: s.specialty === 'PHYSIOTHERAPY' ? null : 'Dr', firstName: s.firstName, lastName: s.lastName, phone: `06000000${String(10 + i)}`, role: 'PRACTITIONER', specialty: s.specialty, cabinetId } });
+  }
+
+  // Codes are unique per cabinet: other specialties' acts get a prefix in this multi-specialty demo.
+  const catalogue = [
+    ...DENTAL_ACTS.map(a => ({ ...a, specialty: 'DENTISTRY' })),
+    ...GENERAL_ACTS.map(a => ({ ...a, specialty: 'GENERAL', code: `G-${a.code}` })),
+    ...SPECIALISTS.flatMap(s => ACTS_BY_SPECIALTY[s.specialty].map(a => ({ ...a, specialty: s.specialty, code: `${s.prefix}-${a.code}` }))),
+  ];
   await prisma.act.createMany({ data: catalogue.map(a => ({ cabinetId, specialty: a.specialty, code: a.code, name: a.name, price: a.price, category: a.category, scope: a.scope, usesFaces: !!a.usesFaces, resultingState: a.resultingState || null })) });
   const acts = new Map((await prisma.act.findMany({ where: { cabinetId } })).map(a => [a.code, a]));
   const act = (code: string) => acts.get(code)!;
@@ -293,6 +314,94 @@ export async function resetDemoCabinet() {
     }
   }
   await prisma.appointment.create({ data: { cabinetId, patientId: karim.id, practitionerId: dentist.id, date: at(14, 9), durationMinutes: 60, reason: 'Préparation couronne 21', status: 'PLANNED' } });
+
+  // ─── Specialty modules: a realistic file for each specialty ───
+  const DAY_MS = 86_400_000;
+  const rec = (patientId: string, specialty: string, kind: string, date: Date, data: object) => prisma.clinicalRecord.create({
+    data: { cabinetId, patientId, practitionerId: specialty === 'GENERAL' ? generalist.id : specialist[specialty].id, specialty, kind, date, data: JSON.stringify(data), private: kind === 'PSY_NOTE' },
+  });
+  const ago = (days: number) => at(-days, 10);
+  const plusMonths = (birth: Date, months: number) => new Date(birth.getFullYear(), birth.getMonth() + months, birth.getDate(), 10);
+  const [ghita, houda, soukaina, anas, tarik] = ['Ghita', 'Houda', 'Soukaina', 'Anas', 'Tarik'].map(byName);
+
+  // Ophtalmologie: diabetic patient whose eye pressure creeps up, then progressive glasses.
+  for (const [days, odIop, osIop] of [[400, 17, 16], [200, 19, 18], [10, 22, 21]] as const) {
+    await rec(mohamed.id, 'OPHTHALMOLOGY', 'EYE_EXAM', ago(days), {
+      od: { va: '6/10', vaCorrected: '9/10', sphere: 1.25, cylinder: -0.5, axis: 90, add: 2.5, iop: odIop },
+      os: { va: '7/10', vaCorrected: '10/10', sphere: 1, cylinder: null, axis: null, add: 2.5, iop: osIop },
+      fundus: days === 10 ? 'Quelques micro-anévrismes : rétinopathie diabétique débutante' : 'Normal',
+      diagnosis: days === 10 ? 'Hypertonie oculaire, presbytie' : 'Presbytie',
+    });
+  }
+  await rec(mohamed.id, 'OPHTHALMOLOGY', 'GLASSES', ago(10), { od: { sphere: 1.25, cylinder: -0.5, axis: 90, add: 2.5 }, os: { sphere: 1, add: 2.5 }, pd: 63, usage: 'PROGRESSIVE', notes: 'Antireflet' });
+  await rec(byName('Imane').id, 'OPHTHALMOLOGY', 'EYE_EXAM', ago(30), { od: { va: '2/10', vaCorrected: '10/10', sphere: -3.25, iop: 15 }, os: { va: '3/10', vaCorrected: '10/10', sphere: -2.75, iop: 14 }, diagnosis: 'Myopie' });
+
+  // Pédiatrie: growth from birth and vaccines given at the right ages (one late for Lina).
+  const growthCurve: [number, number, number, number][] = [[0, 3.3, 50, 35], [6, 7.6, 67, 43], [12, 9.6, 75, 46], [24, 12.2, 87, 48], [36, 14.3, 95, 49.5], [48, 16.2, 103, 50.5], [72, 20.5, 116, 51.5], [96, 25.5, 128, 52]];
+  for (const child of [lina, adam, ghita]) {
+    const birth = new Date(child.birthDate!);
+    for (const [months, weight, height, head] of growthCurve) {
+      if (plusMonths(birth, months) > new Date()) break;
+      await rec(child.id, 'PEDIATRICS', 'GROWTH', plusMonths(birth, months), { weight, height, headCircumference: months <= 36 ? head : null });
+    }
+    const vaccines: [string, number][] = [['BCG', 0], ['HB0', 0], ['VPO0', 0], ['PENTA1', 2], ['VPO1', 2], ['PNEUMO1', 2], ['ROTA1', 2], ['PENTA2', 3], ['VPO2', 3], ['ROTA2', 3], ['PENTA3', 4], ['VPO3', 4], ['VPI', 4], ['PNEUMO2', 4], ['RR1', 9], ['PNEUMO3', 12], ['RR2', 18], ['DTC_R1', 18], ['VPO_R1', 18], ['DTC_R2', 60], ['VPO_R2', 60]];
+    for (const [code, months] of vaccines) {
+      if (plusMonths(birth, months) > new Date() || (child === lina && code === 'PNEUMO3')) continue;
+      await rec(child.id, 'PEDIATRICS', 'VACCINE', plusMonths(birth, months), { code, lot: `L${(months * 37 + 1000).toString(36).toUpperCase()}` });
+    }
+  }
+
+  // Gynécologie: a pregnancy at 20 weeks with its follow-up, and a smear older than three years.
+  const lmp = new Date(Date.now() - 140 * DAY_MS).toISOString().slice(0, 10);
+  const pregnancy = await rec(fatima.id, 'GYNECOLOGY', 'PREGNANCY', new Date(`${lmp}T10:00:00`), { lmp, status: 'ONGOING', gravidity: 2, parity: 1 });
+  for (const [weeks, type, data] of [
+    [8, 'LAB', { notes: 'Bilan prénatal : groupe O+, toxoplasmose immunisée, rubéole immunisée' }],
+    [12, 'ULTRASOUND', { notes: 'Échographie T1 : grossesse unique évolutive, clarté nucale 1,4 mm' }],
+    [16, 'VISIT', { weight: 62, systolic: 110, diastolic: 70, fundalHeight: 15, fetalHeartRate: 150 }],
+    [20, 'VISIT', { weight: 64, systolic: 115, diastolic: 70, fundalHeight: 19, fetalHeartRate: 145, notes: 'RAS, mouvements actifs perçus' }],
+  ] as const) {
+    await rec(fatima.id, 'GYNECOLOGY', 'PREGNANCY_VISIT', new Date(new Date(`${lmp}T10:00:00`).getTime() + weeks * 7 * DAY_MS), { pregnancyId: pregnancy.id, type, ...data });
+  }
+  await rec(houda.id, 'GYNECOLOGY', 'GYN_FOLLOWUP', ago(60), { contraception: 'DIU cuivre (posé en 2023)', lastSmear: new Date(Date.now() - 4 * 365 * DAY_MS).toISOString().slice(0, 10), cycle: 'Régulier, 28 j' });
+
+  // Cardiologie: patient under anticoagulant (AVK) with INR follow-up.
+  await rec(mehdi.id, 'CARDIOLOGY', 'CARDIO_RISK', ago(90), { hypertension: true, dyslipidemia: true, sedentary: true, diabetes: false, smoking: false, obesity: false, familyHistory: true });
+  for (const [days, sys, dia, hr, inr] of [[90, 152, 95, 92, 1.8], [70, 145, 92, 88, 2.4], [50, 140, 88, 84, 3.4], [30, 136, 86, 80, 2.7], [10, 132, 84, 78, 2.5]] as const) {
+    await rec(mehdi.id, 'CARDIOLOGY', 'CARDIO_READING', ago(days), { systolic: sys, diastolic: dia, heartRate: hr, inr });
+  }
+  await rec(mehdi.id, 'CARDIOLOGY', 'ECG', ago(90), { rhythm: 'Fibrillation atriale', rate: 92, interpretation: 'FA à réponse ventriculaire modérée, pas de trouble de repolarisation' });
+
+  // Dermatologie: lesions placed on the body map.
+  await rec(soukaina.id, 'DERMATOLOGY', 'LESION', ago(45), { zone: 'FRONT_HEAD', type: 'Acné', description: 'Acné inflammatoire des joues', status: 'IMPROVING' });
+  await rec(soukaina.id, 'DERMATOLOGY', 'LESION', ago(45), { zone: 'BACK_TRUNK_UP', type: 'Lésion suspecte', sizeMm: 7, description: 'Naevus aux bords irréguliers, à surveiller (dermoscopie)', status: 'ACTIVE' });
+  await rec(tarik.id, 'DERMATOLOGY', 'LESION', ago(120), { zone: 'FRONT_L_FOREARM', type: 'Psoriasis', sizeMm: 30, description: 'Plaque érythémato-squameuse du coude', status: 'HEALED' });
+
+  // Kinésithérapie: low back pain programme, 6 of 10 sessions, pain going down.
+  const program = await rec(byName('Reda').id, 'PHYSIOTHERAPY', 'PHYSIO_PROGRAM', ago(20), { indication: 'Lombalgie chronique', sessionsPrescribed: 10, prescriber: 'Dr Youssef Alaoui', goals: 'Diminuer la douleur, renforcer la sangle abdominale', status: 'ONGOING' });
+  for (const [i, pain] of [7, 6, 6, 5, 4, 3].entries()) {
+    await rec(byName('Reda').id, 'PHYSIOTHERAPY', 'PHYSIO_SESSION', ago(20 - i * 3), { programId: program.id, pain, exercises: i < 2 ? 'Massage, chaleur, étirements doux' : 'Gainage, renforcement des abdominaux, étirements' });
+  }
+
+  // Psychiatrie: private notes and PHQ-9 / GAD-7 going down with treatment.
+  await rec(anas.id, 'PSYCHIATRY', 'PSY_NOTE', ago(90), { text: 'Première consultation. Humeur triste depuis 3 mois, troubles du sommeil, retrait social. Pas d’idées suicidaires.' });
+  await rec(anas.id, 'PSYCHIATRY', 'PSY_NOTE', ago(30), { text: 'Amélioration du sommeil. Reprise partielle des cours. Poursuite de la psychothérapie hebdomadaire.' });
+  for (const [days, phq, gad] of [[90, 18, 12], [60, 15, 10], [30, 11, 8], [5, 8, 6]] as const) {
+    await rec(anas.id, 'PSYCHIATRY', 'PSY_SCALE', ago(days), { scale: 'PHQ9', score: phq });
+    await rec(anas.id, 'PSYCHIATRY', 'PSY_SCALE', ago(days), { scale: 'GAD7', score: gad });
+  }
+
+  // Médecine générale: diabetic patient's vitals getting better.
+  for (const [days, sys, dia, weight, glucose, hba1c] of [[180, 150, 95, 92, 1.62, 8.1], [120, 146, 92, 91, 1.48, null], [90, 142, 90, 90, 1.41, 7.6], [60, 138, 88, 89, 1.35, null], [14, 135, 85, 88, 1.3, 7.2]] as const) {
+    await rec(hicham.id, 'GENERAL', 'VITALS', ago(days), { systolic: sys, diastolic: dia, pulse: 76, weight, height: 176, glucose, hba1c });
+  }
+
+  // Each specialist has a patient this afternoon, so their day is not empty.
+  for (const [i, [specialty, patient, reason]] of ([
+    ['OPHTHALMOLOGY', mohamed, 'Contrôle tonus oculaire'], ['PEDIATRICS', lina, 'Rattrapage vaccinal'], ['GYNECOLOGY', fatima, 'Consultation prénatale'],
+    ['CARDIOLOGY', mehdi, 'Contrôle INR'], ['DERMATOLOGY', soukaina, 'Dermoscopie naevus'], ['PHYSIOTHERAPY', byName('Reda'), 'Séance 7'], ['PSYCHIATRY', anas, 'Séance de suivi'],
+  ] as const).entries()) {
+    await prisma.appointment.create({ data: { cabinetId, patientId: patient.id, practitionerId: specialist[specialty].id, date: at(0, 14 + Math.floor(i / 2), (i % 2) * 30), durationMinutes: 30, reason, status: 'CONFIRMED' } });
+  }
 
   await prisma.cabinet.update({ where: { id: cabinetId }, data: { invoiceSeq, quoteSeq } });
   return cabinet;

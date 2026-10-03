@@ -17,6 +17,7 @@ export interface User {
   firstName: string
   lastName: string
   title?: string | null
+  inpe?: string | null
   phone?: string | null
   avatar?: string | null
   role: Role
@@ -48,6 +49,7 @@ export interface TeamMember {
   title: string | null
   role: Role
   specialty: Specialty | null
+  inpe?: string | null
 }
 
 // ─── Platform ───
@@ -127,6 +129,7 @@ export interface Cabinet {
   email: string | null
   logo: string | null
   letterhead: string | null
+  careSheetLayout?: string | null
   currency: string
   specialty: Specialty
   isDemo: boolean
@@ -326,6 +329,7 @@ export interface Act {
   scope: ActScope
   usesFaces: boolean
   resultingState: ToothStateCode | null
+  ngap?: string | null
   isActive: boolean
 }
 

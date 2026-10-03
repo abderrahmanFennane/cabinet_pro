@@ -18,7 +18,7 @@ router.get('/team', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await prisma.user.findMany({
       where: { cabinetId: req.params.cabinetId, deletedAt: null, isActive: true },
-      select: { id: true, firstName: true, lastName: true, title: true, role: true, specialty: true },
+      select: { id: true, firstName: true, lastName: true, title: true, role: true, specialty: true, inpe: true },
       orderBy: [{ role: 'asc' }, { lastName: 'asc' }],
     });
     sendSuccess(res, users);

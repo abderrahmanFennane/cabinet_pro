@@ -27,6 +27,7 @@ const InvoicesAdmin = lazy(pages.InvoicesAdmin)
 const PrintPrescription = lazy(() => pages.Print().then(m => ({ default: m.PrintPrescription })))
 const PrintDocument = lazy(() => pages.Print().then(m => ({ default: m.PrintDocument })))
 const PrintInvoice = lazy(() => pages.Print().then(m => ({ default: m.PrintInvoice })))
+const CareSheet = lazy(pages.CareSheet)
 const PrintQuote = lazy(() => pages.Print().then(m => ({ default: m.PrintQuote })))
 
 import { useAuth, useCabinetId } from '../lib/hooks'
@@ -77,6 +78,7 @@ export default function AppRouter() {
       <Route path="/print/prescription/:patientId/:id" element={inCabinet(<PrintPrescription />)} />
       <Route path="/print/document/:patientId/:id" element={inCabinet(<PrintDocument />)} />
       <Route path="/print/invoice/:id" element={inCabinet(<PrintInvoice />, ['MANAGE_BILLING'])} />
+      <Route path="/print/care-sheet/:invoiceId" element={inCabinet(<CareSheet />, ['MANAGE_BILLING'])} />
       <Route path="/print/quote/:id" element={inCabinet(<PrintQuote />, ['DENTAL_TREATMENT_PLAN'])} />
 
       <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

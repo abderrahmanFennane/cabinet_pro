@@ -34,6 +34,7 @@ const actSchema = z.object({
   scope: z.enum(['NONE', 'TOOTH', 'TEETH', 'QUADRANT', 'MOUTH']).default('NONE'),
   usesFaces: z.boolean().default(false),
   resultingState: z.string().nullable().optional(),
+  ngap: z.string().trim().max(20).nullable().optional(),
   isActive: z.boolean().default(true),
 });
 

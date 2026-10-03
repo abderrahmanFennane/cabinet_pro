@@ -21,6 +21,8 @@ import messagesRoutes from './routes/messages.routes';
 import auditRoutes from './routes/audit.routes';
 import { startReminderJobs } from './jobs/reminders';
 import { startDemoRefreshJob } from './services/demo';
+import { ensureCatalogue } from './services/cabinet-setup';
+import { prisma } from './config/prisma';
 import { sendSuccess } from './utils/response';
 
 const app = express();
@@ -62,6 +64,9 @@ app.use(errorHandler);
 app.listen(config.port, () => {
   console.log(`🚀 Serveur démarré sur le port ${config.port}`);
   startReminderJobs();
+  ensureCatalogue(prisma)
+    .then(r => { if (r.specialties || r.acts) console.log(`📚 Catalogue complété : ${r.specialties} spécialité(s), ${r.acts} acte(s) par défaut`); })
+    .catch(err => console.error('[catalogue]', err?.message || err));
   startDemoRefreshJob();
 });
 

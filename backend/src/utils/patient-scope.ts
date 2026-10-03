@@ -18,6 +18,7 @@ export function patientWhere(req: Request): Prisma.PatientWhereInput {
         { appointments: { some: { practitionerId: user.id } } },
         { consultations: { some: { practitionerId: user.id } } },
         { dentalActs: { some: { practitionerId: user.id } } },
+        { clinicalRecords: { some: { practitionerId: user.id, deletedAt: null } } },
       ],
     };
   }

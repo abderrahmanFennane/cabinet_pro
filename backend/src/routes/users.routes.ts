@@ -21,6 +21,7 @@ const baseFields = {
   firstName: z.string().trim().min(1, 'Prénom requis'),
   lastName: z.string().trim().min(1, 'Nom requis'),
   title: z.string().trim().max(10).nullable().optional(),
+  inpe: z.string().trim().max(20).nullable().optional(),
   phone: z.string().trim().nullable().optional(),
   specialty: z.enum(SPECIALTIES).nullable().optional(),
   seesAllPatients: z.boolean().optional(),
@@ -32,7 +33,7 @@ const updateSchema = z.object({ ...baseFields, role: z.enum(['OWNER', 'PRACTITIO
 const userInclude = { cabinet: { select: { id: true, name: true } } };
 
 const serialize = (user: any) => ({
-  id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, title: user.title, phone: user.phone,
+  id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, title: user.title, inpe: user.inpe, phone: user.phone,
   avatar: user.avatar, role: user.role, specialty: user.specialty, seesAllPatients: user.seesAllPatients, cabinetId: user.cabinetId,
   isActive: user.isActive, createdAt: user.createdAt, cabinet: user.cabinet || null,
 });

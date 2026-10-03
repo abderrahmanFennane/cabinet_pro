@@ -24,7 +24,7 @@ type Props = {
 // Who each Moroccan basic coverage is for, shown under the choice.
 const COVERAGE_HINT: Record<Coverage, string> = {
   CNSS: 'AMO des salariés du privé et des indépendants (CNSS).',
-  CNOPS: 'AMO des fonctionnaires et agents de l’État (CNOPS).',
+  CNOPS: 'AMO des fonctionnaires et agents de l’État, gérée par la CNSS depuis la loi 54.23 (ex-CNOPS).',
   AMO_TADAMON: 'Ex-RAMED : AMO prise en charge par l’État, gérée par la CNSS.',
   FAR: 'Militaires et leurs familles (Forces armées royales).',
   MUTUELLE: 'Mutuelle seule, sans AMO.',

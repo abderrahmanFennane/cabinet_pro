@@ -6,7 +6,9 @@ import { Plus, Trash2 } from 'lucide-react'
 import api from '../lib/api'
 import { apiError } from '../lib/hooks'
 import { cn, formatCurrency } from '../lib/utils'
-import { Act, ActScope } from '../types'
+import { Link } from 'react-router-dom'
+import { Act, ActScope, Cabinet, Specialty, User } from '../types'
+import { SPECIALTY_MODULES } from '../specialties/registry'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -23,6 +25,10 @@ export default function SpecialtiesAdmin() {
   const [selected, setSelected] = useState('DENTISTRY')
   const [row, setRow] = useState(emptyRow)
   const { data: specialties = [] } = useQuery({ queryKey: ['specialties'], queryFn: async () => (await api.get('/specialties')).data.data as SpecialtyRow[] })
+  const { data: cabinets = [] } = useQuery({ queryKey: ['all-cabinets'], queryFn: async () => (await api.get('/cabinets')).data.data as Cabinet[] })
+  // Same query (and cache shape) as the Utilisateurs page.
+  const { data: users = [] } = useQuery({ queryKey: ['users', ''], queryFn: async () => (await api.get('/users')).data as { data: User[] }, select: d => d.data })
+  const dental = selected === 'DENTISTRY'
   const { data: acts = [] } = useQuery({ queryKey: ['default-acts', selected], queryFn: async () => (await api.get(`/specialties/${selected}/default-acts`)).data.data as Act[] })
   useEffect(() => setRow(emptyRow), [selected])
 
@@ -47,15 +53,31 @@ export default function SpecialtiesAdmin() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title={t('nav.specialties')} subtitle="Spécialités proposées à l’inscription et catalogues d’actes par défaut." />
+      <PageHeader title={t('nav.specialties')} subtitle="Chaque spécialité a sa propre interface. Choisissez celles proposées aux cabinets et leur catalogue d’actes par défaut." />
       <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        {specialties.map(s => (
-          <div key={s.code} className={cn('rounded-2xl border bg-white p-3', selected === s.code ? 'border-primary ring-2 ring-primary/20' : 'border-border')}>
-            <button type="button" className="block w-full text-start font-semibold" onClick={() => setSelected(s.code)}>{t(`specialty.${s.code}`, s.name)}</button>
-            <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" className="h-4 w-4 accent-[#12705A]" checked={s.isActive} onChange={() => toggle.mutate(s)} />Proposée</label>
-          </div>
-        ))}
+        {specialties.map(s => {
+          const doctors = users.filter(u => u.specialty === s.code && (u.role === 'OWNER' || u.role === 'PRACTITIONER')).length
+          return (
+            <div key={s.code} className={cn('rounded-[14px] border bg-white p-3', selected === s.code ? 'border-primary ring-2 ring-primary/20' : 'border-[#D8E1DD]')}>
+              <button type="button" className="block w-full text-start font-semibold" onClick={() => setSelected(s.code)}>{t(`specialty.${s.code}`, s.name)}</button>
+              <p className="mt-0.5 text-[0.78rem] text-[#5A6B65]">{cabinets.filter(c => c.specialty === s.code && !c.isDemo).length} cabinet(s) · {doctors} médecin(s)</p>
+              <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" className="h-4 w-4 accent-[#12705A]" checked={s.isActive} onChange={() => toggle.mutate(s)} />Proposée aux cabinets</label>
+            </div>
+          )
+        })}
       </div>
+
+      {SPECIALTY_MODULES[selected as Specialty] && (
+        <section className="grid gap-3 rounded-[14px] border border-[#D8E1DD] bg-white p-[18px] md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+          <div>
+            <p className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[#5A6B65]">Interface dédiée · onglet « {SPECIALTY_MODULES[selected as Specialty].tab} » du dossier patient</p>
+            <ul className="mt-2 grid gap-1 text-[0.92rem]">
+              {SPECIALTY_MODULES[selected as Specialty].features.map(f => <li key={f} className="flex gap-2"><span className="font-extrabold text-[#1E7A45]">✓</span>{f}</li>)}
+            </ul>
+          </div>
+          <Button asChild variant="outline"><Link to={`/users`}>Gérer les médecins</Link></Button>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h3 className="font-bold">Catalogue par défaut · {t(`specialty.${selected}`)}</h3>
@@ -76,13 +98,13 @@ export default function SpecialtiesAdmin() {
             </tbody>
           </table>
         </div>
-        <form className="grid gap-2 rounded-2xl border border-dashed border-border p-3 sm:grid-cols-[90px_1fr_120px_110px_130px_150px_auto]" onSubmit={e => { e.preventDefault(); add.mutate() }}>
+        <form className={cn('grid gap-2 rounded-[14px] border border-dashed border-[#D8E1DD] p-3', dental ? 'sm:grid-cols-[90px_1fr_120px_110px_130px_150px_auto]' : 'sm:grid-cols-[90px_1fr_160px_130px_auto]')} onSubmit={e => { e.preventDefault(); add.mutate() }}>
           <Input placeholder="Code" value={row.code} onChange={e => setRow(r => ({ ...r, code: e.target.value }))} required aria-label="Code" />
           <Input placeholder="Libellé" value={row.name} onChange={e => setRow(r => ({ ...r, name: e.target.value }))} required aria-label="Libellé" />
           <Input placeholder="Catégorie" value={row.category} onChange={e => setRow(r => ({ ...r, category: e.target.value }))} aria-label="Catégorie" />
           <Input type="number" min={0} value={row.price} onChange={e => setRow(r => ({ ...r, price: e.target.value }))} aria-label="Tarif" />
-          <NativeSelect value={row.scope} onChange={e => setRow(r => ({ ...r, scope: e.target.value as ActScope }))} aria-label="Porte sur"><option value="NONE">—</option><option value="TOOTH">Dent</option><option value="TEETH">Dents</option><option value="QUADRANT">Quadrant</option><option value="MOUTH">Bouche</option></NativeSelect>
-          <NativeSelect value={row.resultingState} onChange={e => setRow(r => ({ ...r, resultingState: e.target.value }))} aria-label="État après l’acte"><option value="">État inchangé</option>{TOOTH_STATE_CODES.map(s => <option key={s} value={s}>{t(`toothState.${s}`)}</option>)}</NativeSelect>
+          {dental && <NativeSelect value={row.scope} onChange={e => setRow(r => ({ ...r, scope: e.target.value as ActScope }))} aria-label="Porte sur"><option value="NONE">—</option><option value="TOOTH">Dent</option><option value="TEETH">Dents</option><option value="QUADRANT">Quadrant</option><option value="MOUTH">Bouche</option></NativeSelect>}
+          {dental && <NativeSelect value={row.resultingState} onChange={e => setRow(r => ({ ...r, resultingState: e.target.value }))} aria-label="État après l’acte"><option value="">État inchangé</option>{TOOTH_STATE_CODES.map(s => <option key={s} value={s}>{t(`toothState.${s}`)}</option>)}</NativeSelect>}
           <Button type="submit" disabled={add.isPending}><Plus size={16} /></Button>
         </form>
       </section>

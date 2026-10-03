@@ -19,4 +19,5 @@ export const pages = {
   AuditLog: () => import('../pages/AuditLog'),
   InvoicesAdmin: () => import('../pages/InvoicesAdmin'),
   Print: () => import('../pages/Print'),
+  CareSheet: () => import('../pages/CareSheet'),
 }

@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { DENTAL_ACTS, GENERAL_ACTS } from '../src/data/catalogue';
+import { ACTS_BY_SPECIALTY } from '../src/data/catalogue';
 import { resetDemoCabinet } from '../src/services/demo';
 
 const prisma = new PrismaClient();
@@ -24,13 +24,13 @@ const PLANS = [
 const SPECIALTIES = [
   { code: 'DENTISTRY', name: 'Médecine dentaire', isActive: true, sortOrder: 1 },
   { code: 'GENERAL', name: 'Médecine générale', isActive: true, sortOrder: 2 },
-  { code: 'PEDIATRICS', name: 'Pédiatrie', isActive: false, sortOrder: 3 },
-  { code: 'GYNECOLOGY', name: 'Gynécologie-obstétrique', isActive: false, sortOrder: 4 },
-  { code: 'OPHTHALMOLOGY', name: 'Ophtalmologie', isActive: false, sortOrder: 5 },
-  { code: 'CARDIOLOGY', name: 'Cardiologie', isActive: false, sortOrder: 6 },
-  { code: 'DERMATOLOGY', name: 'Dermatologie', isActive: false, sortOrder: 7 },
-  { code: 'PHYSIOTHERAPY', name: 'Kinésithérapie', isActive: false, sortOrder: 8 },
-  { code: 'PSYCHIATRY', name: 'Psychiatrie / psychologie', isActive: false, sortOrder: 9 },
+  { code: 'PEDIATRICS', name: 'Pédiatrie', isActive: true, sortOrder: 3 },
+  { code: 'GYNECOLOGY', name: 'Gynécologie-obstétrique', isActive: true, sortOrder: 4 },
+  { code: 'OPHTHALMOLOGY', name: 'Ophtalmologie', isActive: true, sortOrder: 5 },
+  { code: 'CARDIOLOGY', name: 'Cardiologie', isActive: true, sortOrder: 6 },
+  { code: 'DERMATOLOGY', name: 'Dermatologie', isActive: true, sortOrder: 7 },
+  { code: 'PHYSIOTHERAPY', name: 'Kinésithérapie', isActive: true, sortOrder: 8 },
+  { code: 'PSYCHIATRY', name: 'Psychiatrie / psychologie', isActive: true, sortOrder: 9 },
 ];
 
 async function seedCatalogue() {
@@ -41,7 +41,7 @@ async function seedCatalogue() {
     const data = { ...plan, permissions: JSON.stringify(plan.permissions) };
     await prisma.plan.upsert({ where: { code: plan.code }, update: data, create: data });
   }
-  const acts = [...DENTAL_ACTS.map(a => ({ ...a, specialty: 'DENTISTRY' })), ...GENERAL_ACTS.map(a => ({ ...a, specialty: 'GENERAL' }))];
+  const acts = Object.entries(ACTS_BY_SPECIALTY).flatMap(([specialty, list]) => list.map(a => ({ ...a, specialty })));
   for (const act of acts) {
     await prisma.defaultAct.upsert({
       where: { specialty_code: { specialty: act.specialty, code: act.code } },

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { CalendarClock, Printer, Wallet } from 'lucide-react'
+import { CalendarClock, FileText, Printer, Wallet } from 'lucide-react'
 import api from '../../lib/api'
 import { apiError, useCabinetPath } from '../../lib/hooks'
 import { cn, formatCurrency, formatDateFR } from '../../lib/utils'
@@ -74,6 +74,10 @@ export function InvoiceDialog({ id, onClose, cabinetApi, currency }: DetailProps
             )}
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" asChild><a href={cabinetPath(`/print/invoice/${invoice.id}`)} target="_blank" rel="noreferrer"><Printer size={16} className="me-1.5" />Imprimer</a></Button>
+              {/* AMO managed by the CNSS: private sector, AMO Tadamon and, since law 54.23, the former CNOPS members. */}
+              {['CNSS', 'CNOPS', 'AMO_TADAMON'].includes(invoice.patient.coverage) && invoice.status !== 'CANCELLED' && (
+                <Button variant="outline" asChild><a href={cabinetPath(`/print/care-sheet/${invoice.id}`)} target="_blank" rel="noreferrer"><FileText size={16} className="me-1.5" />Feuille de soins CNSS</a></Button>
+              )}
               {remaining > 0 && invoice.status !== 'CANCELLED' && <Button onClick={() => setPaying(true)}><Wallet size={16} className="me-1.5" />Encaisser</Button>}
             </div>
             <PaymentDialog open={paying} onOpenChange={setPaying} cabinetApi={cabinetApi} patientId={invoice.patient.id} currency={currency}

@@ -21,7 +21,7 @@ type Quota = { plan?: { code: string; name: string }; practitioners: { used: num
 const UNLIMITED = 999
 type UserRow = User & { cabinet?: { id: string; name: string } | null }
 const SPECIALTIES: Specialty[] = ['DENTISTRY', 'GENERAL', 'PEDIATRICS', 'GYNECOLOGY', 'OPHTHALMOLOGY', 'CARDIOLOGY', 'DERMATOLOGY', 'PHYSIOTHERAPY', 'PSYCHIATRY']
-const empty = { firstName: '', lastName: '', title: '', email: '', phone: '', password: '', role: Role.ASSISTANT as Role, specialty: '' as '' | Specialty, seesAllPatients: false, cabinetId: '' }
+const empty = { firstName: '', lastName: '', title: '', inpe: '', email: '', phone: '', password: '', role: Role.ASSISTANT as Role, specialty: '' as '' | Specialty, seesAllPatients: false, cabinetId: '' }
 
 // What each account type can do, in one line, shown when choosing it.
 const ROLE_HINT: Record<Role, string> = {
@@ -91,7 +91,7 @@ export default function Users({ cabinetId: cabinetProp, embedded = false }: Prop
     if (!editing) return
     setForm(editing === 'new'
       ? { ...empty, role: platform ? Role.OWNER : [Role.ASSISTANT, Role.PRACTITIONER, Role.OWNER].find(r => roles.includes(r) && !roleFull(r)) || roles[roles.length - 1], password: generatePassword(), cabinetId: cabinetFilter }
-      : { firstName: editing.firstName, lastName: editing.lastName, title: editing.title || '', email: editing.email, phone: editing.phone || '', password: '', role: editing.role, specialty: editing.specialty || '', seesAllPatients: !!editing.seesAllPatients, cabinetId: editing.cabinetId || '' })
+      : { firstName: editing.firstName, lastName: editing.lastName, title: editing.title || '', inpe: editing.inpe || '', email: editing.email, phone: editing.phone || '', password: '', role: editing.role, specialty: editing.specialty || '', seesAllPatients: !!editing.seesAllPatients, cabinetId: editing.cabinetId || '' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing])
 
@@ -101,7 +101,7 @@ export default function Users({ cabinetId: cabinetProp, embedded = false }: Prop
   const save = useMutation({
     mutationFn: () => {
       const body: any = {
-        firstName: form.firstName, lastName: form.lastName, title: form.title || null, email: form.email, phone: form.phone || null, role: form.role,
+        firstName: form.firstName, lastName: form.lastName, title: form.title || null, inpe: isPractitioner ? form.inpe.trim() || null : null, email: form.email, phone: form.phone || null, role: form.role,
         specialty: form.role === Role.ASSISTANT || form.role === Role.SUPER_ADMIN ? null : form.specialty || null, seesAllPatients: form.seesAllPatients,
       }
       if (form.password) body.password = form.password
@@ -274,6 +274,7 @@ export default function Users({ cabinetId: cabinetProp, embedded = false }: Prop
               </div>
             )}
             {isPractitioner && <div className="space-y-1.5"><Label htmlFor="u-title">Titre</Label><Input id="u-title" value={form.title} onChange={set('title')} placeholder="Dr" /></div>}
+            {isPractitioner && <div className="space-y-1.5"><Label htmlFor="u-inpe">N° INPE</Label><Input id="u-inpe" inputMode="numeric" value={form.inpe} onChange={set('inpe')} placeholder="Imprimé sur la feuille de soins CNSS" /></div>}
             {isPractitioner && (
               <div className="space-y-1.5"><Label htmlFor="u-spec">Spécialité</Label>
                 <NativeSelect id="u-spec" value={form.specialty} onChange={set('specialty')}><option value="">Celle du cabinet</option>{SPECIALTIES.map(s => <option key={s} value={s}>{t(`specialty.${s}`)}</option>)}</NativeSelect>

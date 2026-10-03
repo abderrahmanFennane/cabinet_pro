@@ -25,6 +25,68 @@ export const DENTAL_ACTS: SeedAct[] = [
   { code: 'ORTC', name: 'Consultation orthodontique', price: 300, category: 'Orthodontie', scope: 'NONE' },
 ];
 
+export const PEDIATRICS_ACTS: SeedAct[] = [
+  { code: 'CONS', name: 'Consultation pédiatrique', price: 250, category: 'Consultation', scope: 'NONE' },
+  { code: 'CTRL', name: 'Consultation de contrôle', price: 150, category: 'Consultation', scope: 'NONE' },
+  { code: 'NNE', name: 'Examen du nouveau-né', price: 300, category: 'Suivi', scope: 'NONE' },
+  { code: 'VACC', name: 'Vaccination (acte)', price: 100, category: 'Prévention', scope: 'NONE' },
+  { code: 'CERT', name: 'Certificat médical (crèche, école, sport)', price: 100, category: 'Documents', scope: 'NONE' },
+  { code: 'AERO', name: 'Aérosol', price: 80, category: 'Soins', scope: 'NONE' },
+];
+
+export const GYNECOLOGY_ACTS: SeedAct[] = [
+  { code: 'CONS', name: 'Consultation gynécologique', price: 300, category: 'Consultation', scope: 'NONE' },
+  { code: 'CPN', name: 'Consultation prénatale', price: 300, category: 'Grossesse', scope: 'NONE' },
+  { code: 'ECHOP', name: 'Échographie pelvienne', price: 400, category: 'Échographie', scope: 'NONE' },
+  { code: 'ECHOO', name: 'Échographie obstétricale', price: 500, category: 'Grossesse', scope: 'NONE' },
+  { code: 'FCV', name: 'Frottis cervico-vaginal', price: 250, category: 'Dépistage', scope: 'NONE' },
+  { code: 'DIU', name: 'Pose de stérilet (DIU)', price: 600, category: 'Contraception', scope: 'NONE' },
+  { code: 'COLPO', name: 'Colposcopie', price: 500, category: 'Examens', scope: 'NONE' },
+];
+
+export const OPHTHALMOLOGY_ACTS: SeedAct[] = [
+  { code: 'CONS', name: 'Consultation ophtalmologique', price: 300, category: 'Consultation', scope: 'NONE' },
+  { code: 'REFR', name: 'Examen de réfraction', price: 150, category: 'Examens', scope: 'NONE' },
+  { code: 'FO', name: 'Fond d’œil', price: 200, category: 'Examens', scope: 'NONE' },
+  { code: 'TONO', name: 'Tonométrie (pression oculaire)', price: 100, category: 'Examens', scope: 'NONE' },
+  { code: 'CV', name: 'Champ visuel', price: 300, category: 'Examens', scope: 'NONE' },
+  { code: 'OCT', name: 'OCT', price: 500, category: 'Imagerie', scope: 'NONE' },
+  { code: 'LASER', name: 'Laser (séance)', price: 1500, category: 'Traitements', scope: 'NONE' },
+];
+
+export const CARDIOLOGY_ACTS: SeedAct[] = [
+  { code: 'CONS', name: 'Consultation cardiologique', price: 350, category: 'Consultation', scope: 'NONE' },
+  { code: 'ECG', name: 'Électrocardiogramme (ECG)', price: 200, category: 'Examens', scope: 'NONE' },
+  { code: 'ETT', name: 'Échocardiographie (ETT)', price: 800, category: 'Imagerie', scope: 'NONE' },
+  { code: 'EE', name: 'Épreuve d’effort', price: 1000, category: 'Examens', scope: 'NONE' },
+  { code: 'HOLT', name: 'Holter ECG 24 h', price: 800, category: 'Examens', scope: 'NONE' },
+  { code: 'MAPA', name: 'Holter tensionnel (MAPA)', price: 700, category: 'Examens', scope: 'NONE' },
+];
+
+export const DERMATOLOGY_ACTS: SeedAct[] = [
+  { code: 'CONS', name: 'Consultation dermatologique', price: 300, category: 'Consultation', scope: 'NONE' },
+  { code: 'DERMO', name: 'Dermoscopie', price: 200, category: 'Examens', scope: 'NONE' },
+  { code: 'BIOP', name: 'Biopsie cutanée', price: 500, category: 'Actes', scope: 'NONE' },
+  { code: 'CRYO', name: 'Cryothérapie (séance)', price: 300, category: 'Traitements', scope: 'NONE' },
+  { code: 'PEEL', name: 'Peeling', price: 800, category: 'Esthétique', scope: 'NONE' },
+  { code: 'LASER', name: 'Laser (séance)', price: 1000, category: 'Esthétique', scope: 'NONE' },
+];
+
+export const PHYSIOTHERAPY_ACTS: SeedAct[] = [
+  { code: 'BILAN', name: 'Bilan kinésithérapique initial', price: 250, category: 'Bilan', scope: 'NONE' },
+  { code: 'SEANCE', name: 'Séance de rééducation', price: 150, category: 'Séances', scope: 'NONE' },
+  { code: 'DRAIN', name: 'Drainage lymphatique', price: 200, category: 'Séances', scope: 'NONE' },
+  { code: 'RESP', name: 'Kinésithérapie respiratoire', price: 150, category: 'Séances', scope: 'NONE' },
+  { code: 'DOM', name: 'Séance à domicile', price: 250, category: 'Séances', scope: 'NONE' },
+];
+
+export const PSYCHIATRY_ACTS: SeedAct[] = [
+  { code: 'CONS', name: 'Première consultation', price: 400, category: 'Consultation', scope: 'NONE' },
+  { code: 'SUIVI', name: 'Consultation de suivi', price: 300, category: 'Consultation', scope: 'NONE' },
+  { code: 'PSYTH', name: 'Séance de psychothérapie', price: 350, category: 'Séances', scope: 'NONE' },
+  { code: 'TEST', name: 'Bilan psychométrique', price: 600, category: 'Bilans', scope: 'NONE' },
+];
+
 export const GENERAL_ACTS: SeedAct[] = [
   { code: 'CONS', name: 'Consultation', price: 250, category: 'Consultation', scope: 'NONE' },
   { code: 'CTRL', name: 'Consultation de contrôle', price: 150, category: 'Consultation', scope: 'NONE' },
@@ -33,3 +95,16 @@ export const GENERAL_ACTS: SeedAct[] = [
   { code: 'PANS', name: 'Pansement', price: 100, category: 'Soins', scope: 'NONE' },
   { code: 'INJ', name: 'Injection', price: 80, category: 'Soins', scope: 'NONE' },
 ];
+
+/** Default act catalogue of every specialty, copied into a new cabinet of that specialty. */
+export const ACTS_BY_SPECIALTY: Record<string, SeedAct[]> = {
+  DENTISTRY: DENTAL_ACTS,
+  GENERAL: GENERAL_ACTS,
+  PEDIATRICS: PEDIATRICS_ACTS,
+  GYNECOLOGY: GYNECOLOGY_ACTS,
+  OPHTHALMOLOGY: OPHTHALMOLOGY_ACTS,
+  CARDIOLOGY: CARDIOLOGY_ACTS,
+  DERMATOLOGY: DERMATOLOGY_ACTS,
+  PHYSIOTHERAPY: PHYSIOTHERAPY_ACTS,
+  PSYCHIATRY: PSYCHIATRY_ACTS,
+};

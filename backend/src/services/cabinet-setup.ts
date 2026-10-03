@@ -35,3 +35,29 @@ export async function assertSeatAvailable(tx: Tx, cabinetId: string, role: strin
     throw new AppError(`Le plan ${plan?.name || cabinet.plan} de ce cabinet permet ${what}, déjà atteint. Passez à un plan supérieur (Abonnement) pour en ajouter.`, 409);
   }
 }
+
+const SPECIALTY_NAMES: Record<string, string> = {
+  DENTISTRY: 'Médecine dentaire', GENERAL: 'Médecine générale', PEDIATRICS: 'Pédiatrie', GYNECOLOGY: 'Gynécologie-obstétrique',
+  OPHTHALMOLOGY: 'Ophtalmologie', CARDIOLOGY: 'Cardiologie', DERMATOLOGY: 'Dermatologie', PHYSIOTHERAPY: 'Kinésithérapie',
+  PSYCHIATRY: 'Psychiatrie / psychologie',
+};
+
+/**
+ * Adds the specialties and default acts the code knows about but the database does not have yet
+ * (e.g. after an update that brings a new specialty module). Never changes what the Super Admin edited:
+ * existing prices, names and "offered" choices stay as they are.
+ */
+export async function ensureCatalogue(db: { specialty: any; defaultAct: any }) {
+  const { ACTS_BY_SPECIALTY } = await import('../data/catalogue');
+  const specialties = await db.specialty.createMany({
+    data: Object.entries(SPECIALTY_NAMES).map(([code, name], i) => ({ code, name, isActive: true, sortOrder: i + 1 })),
+    skipDuplicates: true,
+  });
+  const acts = await db.defaultAct.createMany({
+    data: Object.entries(ACTS_BY_SPECIALTY).flatMap(([specialty, list]) => list.map(a => ({
+      specialty, code: a.code, name: a.name, price: a.price, category: a.category, scope: a.scope, usesFaces: !!a.usesFaces, resultingState: a.resultingState || null,
+    }))),
+    skipDuplicates: true,
+  });
+  return { specialties: specialties.count as number, acts: acts.count as number };
+}

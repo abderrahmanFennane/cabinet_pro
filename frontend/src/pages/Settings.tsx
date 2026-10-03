@@ -73,7 +73,8 @@ function ReminderLeads({ cabinet }: { cabinet: Cabinet }) {
   )
 }
 
-const emptyAct = { code: '', name: '', price: '0', category: 'Soins', scope: 'NONE' as ActScope, usesFaces: false, resultingState: '' as '' | ToothStateCode, specialty: 'DENTISTRY' }
+const emptyAct = { code: '', name: '', price: '0', category: 'Soins', ngap: '', scope: 'NONE' as ActScope, usesFaces: false, resultingState: '' as '' | ToothStateCode, specialty: 'DENTISTRY' }
+const ALL_SPECIALTIES = ['DENTISTRY', 'GENERAL', 'PEDIATRICS', 'GYNECOLOGY', 'OPHTHALMOLOGY', 'CARDIOLOGY', 'DERMATOLOGY', 'PHYSIOTHERAPY', 'PSYCHIATRY']
 
 function ActsCatalogue({ cabinet }: { cabinet: Cabinet }) {
   const { t } = useTranslation()
@@ -84,12 +85,12 @@ function ActsCatalogue({ cabinet }: { cabinet: Cabinet }) {
   const { data: acts = [] } = useQuery({ queryKey: ['acts', cabinetApi, 'all'], queryFn: async () => (await api.get(`${cabinetApi}/acts`, { params: { all: 'true' } })).data.data as Act[] })
   useEffect(() => {
     if (!editing) return
-    setForm(editing === 'new' ? { ...emptyAct, specialty: cabinet.specialty } : { code: editing.code, name: editing.name, price: String(Number(editing.price)), category: editing.category, scope: editing.scope, usesFaces: editing.usesFaces, resultingState: editing.resultingState || '', specialty: editing.specialty })
+    setForm(editing === 'new' ? { ...emptyAct, specialty: cabinet.specialty } : { code: editing.code, name: editing.name, price: String(Number(editing.price)), category: editing.category, ngap: editing.ngap || '', scope: editing.scope, usesFaces: editing.usesFaces, resultingState: editing.resultingState || '', specialty: editing.specialty })
   }, [editing, cabinet.specialty])
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['acts'] })
   const save = useMutation({
     mutationFn: () => {
-      const body = { ...form, price: Number(form.price), resultingState: form.resultingState || null }
+      const body = { ...form, price: Number(form.price), ngap: form.ngap.trim() || null, resultingState: form.resultingState || null }
       return editing === 'new' ? api.post(`${cabinetApi}/acts`, body) : api.patch(`${cabinetApi}/acts/${(editing as Act).id}`, body)
     },
     onSuccess: () => { toast.success('Catalogue mis à jour'); setEditing(null); refresh() },
@@ -106,13 +107,14 @@ function ActsCatalogue({ cabinet }: { cabinet: Cabinet }) {
       <div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Tarifs utilisés pour les actes, les factures et les devis.</p><Button size="sm" onClick={() => setEditing('new')}><Plus size={16} className="me-1" />Acte</Button></div>
       <div className="overflow-x-auto rounded-[14px] border border-[#D8E1DD] bg-white">
         <table className="w-full min-w-[600px] text-sm">
-          <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="p-3 text-start">Code</th><th className="p-3 text-start">Acte</th><th className="p-3 text-start">Catégorie</th><th className="p-3 text-end">Tarif</th><th className="p-3 text-start">Actif</th></tr></thead>
+          <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="p-3 text-start">Code</th><th className="p-3 text-start">Acte</th><th className="p-3 text-start">Catégorie</th><th className="p-3 text-start">NGAP</th><th className="p-3 text-end">Tarif</th><th className="p-3 text-start">Actif</th></tr></thead>
           <tbody>
             {acts.map(act => (
               <tr key={act.id} className={cn('border-t border-border', !act.isActive && 'opacity-50')}>
                 <td className="p-3 font-mono text-primary">{act.code}</td>
                 <td className="p-3"><button type="button" className="text-start hover:underline" onClick={() => setEditing(act)}>{act.name}</button>{act.resultingState && <span className="ms-2 text-xs text-muted-foreground">→ {t(`toothState.${act.resultingState}`)}</span>}</td>
                 <td className="p-3">{act.category}</td>
+                <td className="p-3 font-mono">{act.ngap || <span className="text-muted-foreground">—</span>}</td>
                 <td className="p-3 text-end font-semibold">{formatCurrency(act.price, cabinet.currency)}</td>
                 <td className="p-3"><input type="checkbox" className="h-4 w-4 accent-[#12705A]" checked={act.isActive} onChange={() => toggle.mutate(act)} aria-label={`Activer ${act.name}`} /></td>
               </tr>
@@ -128,7 +130,8 @@ function ActsCatalogue({ cabinet }: { cabinet: Cabinet }) {
             <div className="space-y-1.5"><Label htmlFor="a-price">Tarif</Label><Input id="a-price" type="number" min={0} step="0.01" value={form.price} onChange={set('price')} /></div>
             <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="a-name">Libellé</Label><Input id="a-name" value={form.name} onChange={set('name')} required /></div>
             <div className="space-y-1.5"><Label htmlFor="a-cat">Catégorie</Label><Input id="a-cat" value={form.category} onChange={set('category')} /></div>
-            <div className="space-y-1.5"><Label htmlFor="a-spec">Spécialité</Label><NativeSelect id="a-spec" value={form.specialty} onChange={set('specialty')}><option value="DENTISTRY">{t('specialty.DENTISTRY')}</option><option value="GENERAL">{t('specialty.GENERAL')}</option></NativeSelect></div>
+            <div className="space-y-1.5"><Label htmlFor="a-spec">Spécialité</Label><NativeSelect id="a-spec" value={form.specialty} onChange={set('specialty')}>{ALL_SPECIALTIES.map(s => <option key={s} value={s}>{t(`specialty.${s}`)}</option>)}</NativeSelect></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="a-ngap">Cotation NGAP (lettre clé et coefficient)</Label><Input id="a-ngap" value={form.ngap} onChange={set('ngap')} placeholder="ex. C, CS, D 30, K 20" /><p className="text-xs text-muted-foreground">Reportée sur la feuille de soins CNSS.</p></div>
             {form.specialty === 'DENTISTRY' && <>
               <div className="space-y-1.5"><Label htmlFor="a-scope">Porte sur</Label>
                 <NativeSelect id="a-scope" value={form.scope} onChange={set('scope')}><option value="NONE">Rien de précis</option><option value="TOOTH">Une dent</option><option value="TEETH">Plusieurs dents</option><option value="QUADRANT">Un quadrant</option><option value="MOUTH">Toute la bouche</option></NativeSelect>

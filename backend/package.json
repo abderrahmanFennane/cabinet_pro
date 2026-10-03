@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node prisma/seed.ts",
+    "db:seed:specialties": "ts-node prisma/seed-specialties.ts",
     "db:setup": "prisma generate && prisma migrate dev --name init && ts-node prisma/seed.ts",
     "test": "npm run build && node --test test/"
   },
