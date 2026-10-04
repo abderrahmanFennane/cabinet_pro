@@ -28,6 +28,11 @@ const PrintPrescription = lazy(() => pages.Print().then(m => ({ default: m.Print
 const PrintDocument = lazy(() => pages.Print().then(m => ({ default: m.PrintDocument })))
 const PrintInvoice = lazy(() => pages.Print().then(m => ({ default: m.PrintInvoice })))
 const CareSheet = lazy(pages.CareSheet)
+const Account = lazy(pages.Account)
+const SharedDocument = lazy(pages.SharedDocument)
+const PatientFilePrint = lazy(pages.PatientFilePrint)
+const ChildBooklet = lazy(pages.ChildBooklet)
+const PlatformHome = lazy(pages.PlatformHome)
 const PrintQuote = lazy(() => pages.Print().then(m => ({ default: m.PrintQuote })))
 
 import { useAuth, useCabinetId } from '../lib/hooks'
@@ -55,7 +60,7 @@ function ProtectedRoute({ children, roles, permissions, cabinet }: Props) {
 function RedirectHome() {
   const { user, hasPermissions } = useAuth()
   if (!user) return <Navigate to="/login" replace />
-  if (user.role === Role.SUPER_ADMIN) return <Navigate to="/cabinets" replace />
+  if (user.role === Role.SUPER_ADMIN) return <Navigate to="/platform" replace />
   if (hasPermissions('MANAGE_APPOINTMENTS')) return <Navigate to="/today" replace />
   return <Navigate to="/patients" replace />
 }
@@ -72,10 +77,14 @@ export default function AppRouter() {
     <Suspense fallback={null}>
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Document sent to a patient by link: public, protected by the patient's date of birth */}
+      <Route path="/d/:token" element={<SharedDocument />} />
       <Route path="/403" element={<PermissionDenied />} />
 
       {/* Printable documents, outside the app shell */}
       <Route path="/print/prescription/:patientId/:id" element={inCabinet(<PrintPrescription />)} />
+      <Route path="/print/child-booklet/:patientId" element={inCabinet(<ChildBooklet />, ['VIEW_MEDICAL'])} />
+      <Route path="/print/patient/:patientId" element={inCabinet(<PatientFilePrint />, ['VIEW_MEDICAL'])} />
       <Route path="/print/document/:patientId/:id" element={inCabinet(<PrintDocument />)} />
       <Route path="/print/invoice/:id" element={inCabinet(<PrintInvoice />, ['MANAGE_BILLING'])} />
       <Route path="/print/care-sheet/:invoiceId" element={inCabinet(<CareSheet />, ['MANAGE_BILLING'])} />
@@ -92,8 +101,10 @@ export default function AppRouter() {
         <Route path="billing" element={inCabinet(<Billing />, ['MANAGE_BILLING'])} />
         <Route path="settings" element={inCabinet(<Settings />, ['MANAGE_SETTINGS'], [Role.OWNER, Role.SUPER_ADMIN])} />
         <Route path="team" element={<ProtectedRoute roles={[Role.OWNER]} permissions={['MANAGE_TEAM']}><Users /></ProtectedRoute>} />
+        <Route path="account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         <Route path="pricing" element={<ProtectedRoute roles={[Role.OWNER]} permissions={['MANAGE_SUBSCRIPTION']}><Pricing /></ProtectedRoute>} />
 
+        <Route path="platform" element={platform(<PlatformHome />)} />
         <Route path="cabinets" element={platform(<CabinetList />)} />
         <Route path="cabinets/:id" element={platform(<CabinetDetail />)} />
         <Route path="users" element={platform(<Users />)} />

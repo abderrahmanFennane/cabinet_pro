@@ -10,6 +10,7 @@ import { toast } from '../components/ui/toast'
 import LanguageSwitcher from '../components/layout/LanguageSwitcher'
 import { formatDateFR } from '../lib/utils'
 import { toneAt } from '../lib/tones'
+import { postToGateway } from '../lib/gateway'
 
 /** wa.me needs international digits; local Moroccan numbers start with 0. */
 export const whatsappLink = (phone: string) => {
@@ -38,7 +39,7 @@ export default function SubscriptionBlocked() {
 
   const checkout = useMutation({
     mutationFn: async (planCode: string) => (await api.post('/billing/checkout', { planCode })).data.data,
-    onSuccess: (data: any) => { if (data?.checkoutUrl) window.location.href = data.checkoutUrl },
+    onSuccess: (data: any) => { if (data?.gateway) postToGateway(data.gateway) },
     onError: () => toast({ title: t('blocked.contactUs'), description: t('blocked.onlineUnavailable'), variant: 'destructive' }),
   })
 

@@ -17,22 +17,28 @@ model User {
   password        String
   firstName       String
   lastName        String
-  title           String?   // "Dr", "Pr"...
-  inpe            String?   // INPE: national identifier of the health professional (CNSS care sheet)
+  title           String? // "Dr", "Pr"...
+  inpe            String? // INPE: national identifier of the health professional (CNSS care sheet)
   phone           String?
   avatar          String?
   role            String    @default("ASSISTANT")
-  specialty       String?   // practitioners only: DENTISTRY, GENERAL...
+  specialty       String? // practitioners only: DENTISTRY, GENERAL...
   // Collaborator setting: see every patient of the cabinet, or only their own.
   seesAllPatients Boolean   @default(false)
   isActive        Boolean   @default(true)
+  // Two-step login (TOTP): secret stored encrypted, set when enrolment is confirmed; recovery codes hashed (JSON).
+  totpSecret      String?   @db.Text
+  totpEnabledAt   DateTime?
+  recoveryCodes   String?   @db.Text
+  // Bumped to sign the user out everywhere (password change, deactivation, 2FA reset, "log out all devices").
+  tokenVersion    Int       @default(0)
   cabinetId       String?
   cabinet         Cabinet?  @relation(fields: [cabinetId], references: [id], onDelete: SetNull)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
-  appointments    Appointment[]  @relation("AppointmentPractitioner")
+  appointments    Appointment[]    @relation("AppointmentPractitioner")
   consultations   Consultation[]
   prescriptions   Prescription[]
   dentalActs      DentalAct[]
@@ -45,58 +51,66 @@ model User {
 }
 
 model Cabinet {
-  id                 String    @id @default(cuid())
-  name               String
-  address            String?
-  city               String?
-  phone              String?
-  email              String?
-  logo               String?
+  id                  String    @id @default(cuid())
+  name                String
+  address             String?
+  city                String?
+  phone               String?
+  email               String?
+  logo                String?
   // Printed on prescriptions and invoices (INPE, ICE, order registration...).
-  letterhead         String?   @db.Text
+  letterhead          String?   @db.Text
   // JSON: field positions (mm) for printing on the official CNSS care sheet
-  careSheetLayout    String?   @db.Text
-  currency           String    @default("MAD")
-  specialty          String    @default("DENTISTRY")
-  isDemo             Boolean   @default(false)
-  isActive           Boolean   @default(true)
-  plan               String    @default("TRIAL")
-  subscriptionStatus String    @default("TRIALING")
-  trialEndsAt        DateTime?
-  currentPeriodEnd   DateTime?
-  maxPractitioners   Int       @default(1)
-  maxAssistants      Int       @default(1)
-  monthlyMessages    Int       @default(20)
-  remindersEnabled   Boolean   @default(true)
-  reminderChannel    String    @default("BOTH")
+  careSheetLayout     String?   @db.Text
+  currency            String    @default("MAD")
+  specialty           String    @default("DENTISTRY")
+  isDemo              Boolean   @default(false)
+  isActive            Boolean   @default(true)
+  plan                String    @default("TRIAL")
+  subscriptionStatus  String    @default("TRIALING")
+  trialEndsAt         DateTime?
+  currentPeriodEnd    DateTime?
+  maxPractitioners    Int       @default(1)
+  maxAssistants       Int       @default(1)
+  monthlyMessages     Int       @default(20)
+  remindersEnabled    Boolean   @default(true)
+  reminderChannel     String    @default("BOTH")
   // Reminder delays, in minutes before the appointment (defaults: day before and one hour before).
-  reminderLeadMinutes String   @default("1440,60")
-  invoiceSeq         Int       @default(0)
-  quoteSeq           Int       @default(0)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  deletedAt          DateTime?
+  reminderLeadMinutes String    @default("1440,60")
+  // First-steps guide closed by the owner
+  setupGuideHiddenAt  DateTime?
+  invoiceSeq          Int       @default(0)
+  quoteSeq            Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
 
-  users               User[]
-  patients            Patient[]
-  appointments        Appointment[]
-  consultations       Consultation[]
-  prescriptions       Prescription[]
+  users                 User[]
+  patients              Patient[]
+  appointments          Appointment[]
+  consultations         Consultation[]
+  prescriptions         Prescription[]
   prescriptionTemplates PrescriptionTemplate[]
-  documents           MedicalDocument[]
-  attachments         Attachment[]
-  acts                Act[]
-  invoices            Invoice[]
-  payments            Payment[]
-  quotes              Quote[]
-  toothStates         ToothState[]
-  dentalActs          DentalAct[]
-  treatmentPlans      TreatmentPlan[]
-  clinicalRecords     ClinicalRecord[]
-  accessLogs          PatientAccessLog[]
-  supportGrants       SupportAccessGrant[]
-  subscriptionHistory SubscriptionHistory[]
-  billingInvoices     BillingInvoice[]
+  documents             MedicalDocument[]
+  attachments           Attachment[]
+  acts                  Act[]
+  invoices              Invoice[]
+  payments              Payment[]
+  quotes                Quote[]
+  toothStates           ToothState[]
+  dentalActs            DentalAct[]
+  treatmentPlans        TreatmentPlan[]
+  clinicalRecords       ClinicalRecord[]
+  accessLogs            PatientAccessLog[]
+  supportGrants         SupportAccessGrant[]
+  subscriptionHistory   SubscriptionHistory[]
+  billingInvoices       BillingInvoice[]
+
+  cashClosings          CashClosing[]
+  consultationTemplates ConsultationTemplate[]
+  documentShares        DocumentShare[]
+
+  absences Absence[]
 
   @@index([name])
   @@index([isActive])
@@ -267,54 +281,54 @@ model AppSettings {
 // ─────────────────────────────── Socle commun ───────────────────────────────
 
 model Patient {
-  id                  String    @id @default(cuid())
-  cabinetId           String
-  cabinet             Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
-  firstName           String
-  lastName            String
-  sex                 String?   // F, M
-  birthDate           DateTime?
-  cin                 String?
-  phone               String?
-  email               String?
-  address             String?
+  id                     String    @id @default(cuid())
+  cabinetId              String
+  cabinet                Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  firstName              String
+  lastName               String
+  sex                    String? // F, M
+  birthDate              DateTime?
+  cin                    String?
+  phone                  String?
+  email                  String?
+  address                String?
   // Basic coverage (régime de base): CNSS, CNOPS, AMO_TADAMON, FAR, MUTUELLE, PRIVATE, NONE
-  coverage            String    @default("NONE")
-  coverageNumber      String?   // N° d'immatriculation / d'affiliation
+  coverage               String    @default("NONE")
+  coverageNumber         String? // N° d'immatriculation / d'affiliation
   // Insured person when it is not the patient (child covered by a parent, spouse).
-  insuredName         String?
+  insuredName            String?
   // Complementary cover: mutuelle or private insurer, and its member / policy number.
   complementaryInsurance String?
   complementaryNumber    String?
-  bloodGroup          String?
+  bloodGroup             String?
   // Medical background (restricted to practitioners).
-  medicalHistory      String?   @db.Text
-  surgicalHistory     String?   @db.Text
-  familyHistory       String?   @db.Text
-  currentTreatments   String?   @db.Text
+  medicalHistory         String?   @db.Text
+  surgicalHistory        String?   @db.Text
+  familyHistory          String?   @db.Text
+  currentTreatments      String?   @db.Text
   // Comma-separated; shown as a banner on every patient page.
-  allergies           String?   @db.Text
+  allergies              String?   @db.Text
   // Dental chart view forced by the practitioner (PRIMARY, MIXED, PERMANENT); null = from age.
-  dentition           String?
-  primaryPractitionerId String?
-  consentDataAt       DateTime?
-  consentRemindersAt  DateTime?
-  notes               String?   @db.Text
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  deletedAt           DateTime?
+  dentition              String?
+  primaryPractitionerId  String?
+  consentDataAt          DateTime?
+  consentRemindersAt     DateTime?
+  notes                  String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  deletedAt              DateTime?
 
-  appointments   Appointment[]
-  consultations  Consultation[]
-  prescriptions  Prescription[]
-  documents      MedicalDocument[]
-  attachments    Attachment[]
-  invoices       Invoice[]
-  payments       Payment[]
-  quotes         Quote[]
-  toothStates    ToothState[]
-  dentalActs     DentalAct[]
-  treatmentPlans TreatmentPlan[]
+  appointments    Appointment[]
+  consultations   Consultation[]
+  prescriptions   Prescription[]
+  documents       MedicalDocument[]
+  attachments     Attachment[]
+  invoices        Invoice[]
+  payments        Payment[]
+  quotes          Quote[]
+  toothStates     ToothState[]
+  dentalActs      DentalAct[]
+  treatmentPlans  TreatmentPlan[]
   clinicalRecords ClinicalRecord[]
 
   @@index([cabinetId, lastName])
@@ -344,6 +358,8 @@ model Appointment {
   cancellationReason String?
   // Comma-separated lead times (minutes) already reminded.
   remindersSent      String?
+  // Same id on every occurrence of a recurring appointment
+  seriesId           String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
@@ -354,6 +370,7 @@ model Appointment {
   @@index([practitionerId, date])
   @@index([patientId])
   @@index([status])
+  @@index([seriesId])
 }
 
 model Consultation {
@@ -373,6 +390,8 @@ model Consultation {
   // JSON: { bp, pulse, weight, height, temperature, glucose... }
   vitals         String?      @db.Text
   diagnosis      String?      @db.Text
+  // ICD-10 (CIM-10) code of the main diagnosis, e.g. "J02.9"
+  diagnosisCode  String?
   plan           String?      @db.Text
   notes          String?      @db.Text
   // DRAFT, LOCKED
@@ -509,6 +528,9 @@ model Invoice {
   // OPEN, PARTIAL, PAID, CANCELLED
   status         String    @default("OPEN")
   notes          String?
+  // Unpaid balance follow-up
+  reminderCount  Int       @default(0)
+  lastReminderAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -610,20 +632,20 @@ model QuoteItem {
 
 // Current state of one tooth (FDI number) of a patient.
 model ToothState {
-  id        String   @id @default(cuid())
-  cabinetId String
-  cabinet   Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
-  patientId String
-  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  tooth     Int
+  id          String   @id @default(cuid())
+  cabinetId   String
+  cabinet     Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tooth       Int
   // HEALTHY, CARIES, FILLED, CROWN, BRIDGE, ENDO, IMPLANT, MISSING, FRACTURED, MOBILE, ERUPTING
-  state     String   @default("HEALTHY")
+  state       String   @default("HEALTHY")
   // Affected faces: comma-separated among M, D, O, I, V, L, P
-  faces     String?
-  notes     String?  @db.Text
+  faces       String?
+  notes       String?  @db.Text
   updatedById String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([patientId, tooth])
   @@index([cabinetId])
@@ -663,19 +685,19 @@ model DentalAct {
 }
 
 model TreatmentPlan {
-  id             String      @id @default(cuid())
+  id             String   @id @default(cuid())
   cabinetId      String
-  cabinet        Cabinet     @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  cabinet        Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
   patientId      String
-  patient        Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   practitionerId String
-  practitioner   User        @relation(fields: [practitionerId], references: [id], onDelete: Restrict)
+  practitioner   User     @relation(fields: [practitionerId], references: [id], onDelete: Restrict)
   title          String
   // PROPOSED, ACCEPTED, IN_PROGRESS, DONE, CANCELLED
-  status         String      @default("PROPOSED")
-  notes          String?     @db.Text
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  status         String   @default("PROPOSED")
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   acts  DentalAct[]
   quote Quote?
@@ -719,4 +741,108 @@ model ClinicalRecord {
 
   @@index([cabinetId, patientId, specialty, date])
   @@index([patientId, kind])
+}
+
+/// National medicine list (CNOPS "Référentiel des médicaments", data.gov.ma, ODbL), shared by every cabinet.
+/// Loaded from prisma/data/drugs-ma.json at startup when empty; the Super Admin can import a newer file.
+model Drug {
+  id           String   @id @default(cuid())
+  code         String   @unique // barcode (EAN-13)
+  name         String
+  dci          String?
+  dosage       String?
+  form         String?
+  presentation String?
+  ppv          Decimal? @db.Decimal(10, 2)
+  refundRate   Int?
+  generic      Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+
+  @@index([name])
+  @@index([dci])
+}
+
+/// End-of-day cash count: what the payments say vs what is in the drawer.
+model CashClosing {
+  id           String   @id @default(cuid())
+  cabinetId    String
+  cabinet      Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  day          DateTime @db.Date
+  // JSON: { CASH: 1200, CARD: 300, ... } payments recorded that day
+  totals       String   @db.Text
+  expectedCash Decimal  @db.Decimal(12, 2)
+  countedCash  Decimal  @db.Decimal(12, 2)
+  difference   Decimal  @db.Decimal(12, 2)
+  notes        String?  @db.Text
+  closedById   String
+  createdAt    DateTime @default(now())
+
+  @@unique([cabinetId, day])
+}
+
+/// Prefilled consultation ("Angine", "Contrôle tension"...), personal or shared with the cabinet.
+model ConsultationTemplate {
+  id            String   @id @default(cuid())
+  cabinetId     String
+  cabinet       Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  // null = shared with the whole cabinet
+  userId        String?
+  name          String
+  reason        String?  @db.Text
+  examination   String?  @db.Text
+  diagnosis     String?  @db.Text
+  diagnosisCode String?
+  plan          String?  @db.Text
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([cabinetId])
+}
+
+/// Link sent to the patient (WhatsApp) to open one document; asks for the date of birth when it is known.
+model DocumentShare {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  cabinetId   String
+  cabinet     Cabinet   @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  patientId   String
+  // PRESCRIPTION, DOCUMENT, INVOICE
+  kind        String
+  refId       String
+  createdById String
+  expiresAt   DateTime
+  openedAt    DateTime?
+  openCount   Int       @default(0)
+  failedTries Int       @default(0)
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([cabinetId, patientId])
+}
+
+/// ICD-10 (CIM-10) codes offered when coding a diagnosis. Shared list, extendable by the Super Admin.
+model DiagnosisCode {
+  code    String  @id
+  label   String
+  chapter String?
+
+  @@index([label])
+}
+
+/// Holidays and absences: no appointment can be booked during them (one doctor, or the whole cabinet).
+model Absence {
+  id             String   @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet  @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  // null = the whole cabinet is closed
+  practitionerId String?
+  startsAt       DateTime
+  endsAt         DateTime
+  reason         String?
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  @@index([cabinetId, startsAt])
 }

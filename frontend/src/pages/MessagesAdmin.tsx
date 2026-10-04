@@ -18,6 +18,7 @@ import { Badge } from '../components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
 import { toast } from '../components/ui/toast'
+import { useL } from '../lib/labels'
 
 type Channel = 'IN_APP' | 'SMS' | 'WHATSAPP'
 
@@ -25,6 +26,7 @@ const statusVariant: Record<string, any> = { SENT: 'success', LOGGED: 'secondary
 const channelIcon = (channel: string) => channel === 'SMS' ? <Smartphone size={14} /> : <MessageCircle size={14} />
 
 export default function MessagesAdmin() {
+  const L = useL()
   const { t } = useTranslation()
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -118,7 +120,7 @@ export default function MessagesAdmin() {
               </div>
               {target === 'selected' && (
                 <div className="space-y-2 rounded-2xl border border-[#D8E1DD] bg-[#F2F5F3] p-3">
-                  <SearchInput value={cabinetSearch} onChange={setCabinetSearch} placeholder="Rechercher un cabinet..." />
+                  <SearchInput value={cabinetSearch} onChange={setCabinetSearch} placeholder={L('Rechercher un cabinet...')} />
                   <div className="max-h-52 space-y-1 overflow-y-auto pe-1">
                     {filteredCabinets.map(cabinet => (
                       <label key={cabinet.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm hover:bg-[#DCEEE7]">
@@ -175,8 +177,8 @@ export default function MessagesAdmin() {
               <Label>{t('messagesPage.testPhone')}</Label>
               <Input type="tel" value={testPhone} onChange={e => setTestPhone(e.target.value)} placeholder="06 12 34 56 78" />
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="gap-1.5" disabled={testPhone.length < 6 || test.isPending} onClick={() => test.mutate('WHATSAPP')}><TestTube2 size={15} /> WhatsApp</Button>
-                <Button variant="outline" className="gap-1.5" disabled={testPhone.length < 6 || test.isPending} onClick={() => test.mutate('SMS')}><TestTube2 size={15} /> SMS</Button>
+                <Button variant="outline" className="gap-1.5" disabled={testPhone.length < 6 || test.isPending} onClick={() => test.mutate('WHATSAPP')}><TestTube2 size={15} /> {L('WhatsApp')}</Button>
+                <Button variant="outline" className="gap-1.5" disabled={testPhone.length < 6 || test.isPending} onClick={() => test.mutate('SMS')}><TestTube2 size={15} /> {L('SMS')}</Button>
               </div>
             </div>
           </CardContent>
@@ -230,7 +232,7 @@ export default function MessagesAdmin() {
                     <TableRow>
                       <TableHead>{t('common.date')}</TableHead>
                       <TableHead>{t('audit.cabinet')}</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>{L('Type')}</TableHead>
                       <TableHead>{t('messagesPage.channels')}</TableHead>
                       <TableHead>{t('common.phone')}</TableHead>
                       <TableHead>{t('messagesPage.body')}</TableHead>

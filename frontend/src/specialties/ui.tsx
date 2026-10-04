@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { ClinicalRecord } from './records'
+import { useL } from '../lib/labels'
 
 /** Card used by every module: title, short help, optional action on the right. */
 export function Section({ title, hint, action, children, className }: { title: string; hint?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
@@ -24,14 +25,24 @@ export function Section({ title, hint, action, children, className }: { title: s
   )
 }
 
-/** Labelled input bound to a string field of a form state. */
-export function Field({ id, label, value, onChange, type = 'text', unit, placeholder, className, step }: {
+/**
+ * Labelled input bound to a string field of a form state. With min/max, a value outside the range is shown in red
+ * with the allowed range (and an optional hint, e.g. "pachymétrie ?"), and the browser refuses to submit the form.
+ */
+export function Field({ id, label, value, onChange, type = 'text', unit, placeholder, className, step, min, max, hint }: {
   id: string; label: string; value: string; onChange: (value: string) => void; type?: string; unit?: string; placeholder?: string; className?: string; step?: string
+  min?: number; max?: number; hint?: string
 }) {
+  const L = useL()
+  const n = Number(String(value).replace(',', '.'))
+  const out = type === 'number' && String(value).trim() !== '' && Number.isFinite(n) && ((min !== undefined && n < min) || (max !== undefined && n > max))
   return (
     <div className={cn('space-y-1.5', className)}>
       <Label htmlFor={id}>{label}{unit && <span className="font-normal text-[#5A6B65]"> ({unit})</span>}</Label>
-      <Input id={id} type={type} inputMode={type === 'number' ? 'decimal' : undefined} step={step ?? (type === 'number' ? 'any' : undefined)} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+      <Input id={id} type={type} inputMode={type === 'number' ? 'decimal' : undefined} step={step ?? (type === 'number' ? 'any' : undefined)} min={min} max={max}
+        value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} aria-invalid={out || undefined} aria-describedby={out ? `${id}-range` : undefined}
+        className={cn(out && 'border-[#B8372C] focus-visible:ring-[#B8372C]')} />
+      {out && <p id={`${id}-range`} className="text-[0.76rem] font-semibold leading-tight text-[#B8372C]">{L('Valeur impossible')} ({min ?? '…'} {L('à')} {max ?? '…'}{unit ? ` ${unit}` : ''}){hint ? ` · ${L(hint)}` : ''}</p>}
     </div>
   )
 }
@@ -41,9 +52,10 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 export function DeleteButton({ onDelete }: { onDelete: () => void }) {
+  const L = useL()
   return (
     <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-[#5A6B65] hover:text-[#B8372C]" aria-label="Supprimer"
-      onClick={() => { if (window.confirm('Supprimer cet élément ?')) onDelete() }}>
+      onClick={() => { if (window.confirm(L('Supprimer cet élément ?'))) onDelete() }}>
       <Trash2 size={15} />
     </Button>
   )
@@ -62,20 +74,21 @@ export function RecordMeta({ record, onDelete }: { record: ClinicalRecord; onDel
 export type Series = { key: string; label: string; color: string }
 
 /** Small line chart of values over time (oldest left), with optional reference lines (e.g. 140 mmHg). */
-export function Trend({ data, series, unit, references = [], height = 200 }: {
-  data: Record<string, any>[]; series: Series[]; unit?: string; references?: { y: number; label: string }[]; height?: number
+export function Trend({ data, series, unit, references = [], height = 200, empty }: {
+  data: Record<string, any>[]; series: Series[]; unit?: string; references?: { y: number; label: string }[]; height?: number; empty?: string
 }) {
-  if (data.length < 2) return <Empty>La courbe apparaît à partir de deux mesures.</Empty>
+  const L = useL()
+  if (data.length < 2) return <Empty>{empty || L('La courbe apparaît à partir de deux mesures.')}</Empty>
   return (
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
           <CartesianGrid stroke="#E3EAE7" vertical={false} />
           <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="#8A9A94" />
-          <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="#8A9A94" width={44} domain={['auto', 'auto']} />
+          <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="#8A9A94" width={44} domain={['auto', 'auto']} padding={{ top: 12, bottom: 14 }} />
           <Tooltip formatter={(v: number, name: string) => [`${v}${unit ? ` ${unit}` : ''}`, name]} contentStyle={{ borderRadius: 10, border: '1px solid #D8E1DD', fontSize: 12 }} />
-          {references.map(r => <ReferenceLine key={r.label} y={r.y} stroke="#B8372C" strokeDasharray="4 4" label={{ value: r.label, position: 'insideTopRight', fontSize: 10, fill: '#B8372C' }} />)}
-          {series.map(s => <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={2} dot={{ r: 3 }} connectNulls />)}
+          {references.map(r => <ReferenceLine key={r.label} y={r.y} ifOverflow="extendDomain" stroke="#B8372C" strokeDasharray="4 4" label={{ value: r.label, position: 'insideTopRight', fontSize: 10, fill: '#B8372C' }} />)}
+          {series.map(s => <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />)}
         </LineChart>
       </ResponsiveContainer>
     </div>

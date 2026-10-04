@@ -10,10 +10,14 @@ import { practitionerName, useAuth, useCabinetApi, useCabinetPath, useTeam } fro
 import { cn, formatCurrency } from '../lib/utils'
 import { Appointment, AppointmentStatus, CabinetDashboard, Invoice, Role } from '../types'
 import { PageHeader } from '../components/layout/PageHeader'
+import SetupGuide from '../components/layout/SetupGuide'
 import { Button } from '../components/ui/button'
 import AppointmentDialog from '../components/agenda/AppointmentDialog'
 import WalkInDialog from '../components/agenda/WalkInDialog'
 import { useAppointmentStatus } from '../components/agenda/AppointmentActions'
+import ChargeForm from '../components/billing/ChargeForm'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog'
+import { useL } from '../lib/labels'
 
 export const STATUS_PILL: Record<AppointmentStatus, string> = {
   PLANNED: 'bg-[#E9EFEC] text-[#5A6B65]',
@@ -47,6 +51,7 @@ const patientLabel = (a: Appointment) => (a.patient ? `${a.patient.firstName} ${
 
 /** Home of every cabinet user: the day at a glance, with one obvious next action. */
 export default function Today() {
+  const L = useL()
   const { t, i18n } = useTranslation()
   const { user, hasPermissions } = useAuth()
   const cabinetApi = useCabinetApi()
@@ -56,6 +61,8 @@ export default function Today() {
   const { data: team = [] } = useTeam()
   const [booking, setBooking] = useState(false)
   const [walkIn, setWalkIn] = useState(false)
+  // "Encaisser" opens the payment right here, prefilled with what the patient owes.
+  const [paying, setPaying] = useState<{ appointment: Appointment; mode: 'collect' | 'visit' } | null>(null)
   const [filter, setFilter] = useState<string>(user?.role === Role.OWNER ? 'me' : 'all')
 
   const { data: items = [], isLoading } = useQuery({
@@ -81,6 +88,9 @@ export default function Today() {
     enabled: canBill,
   })
   const owing = new Set(invoices.filter(inv => inv.status === 'OPEN' || inv.status === 'PARTIAL').map(inv => inv.patient.id))
+  // Seen today but not billed yet: "Encaisser" then proposes the consultation act.
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const billedToday = new Set(invoices.filter(inv => inv.status !== 'CANCELLED' && inv.date.slice(0, 10) === todayKey).map(inv => inv.patient.id))
   const currency = user?.cabinet?.currency || 'MAD'
   const locale = i18n.language.startsWith('ar') ? ar : i18n.language.startsWith('en') ? enGB : fr
   const dayLabel = format(new Date(), 'EEEE d MMMM', { locale }).replace(/^./, c => c.toUpperCase())
@@ -103,7 +113,7 @@ export default function Today() {
     if (a.status === 'PLANNED' || a.status === 'CONFIRMED') return <Button size="sm" onClick={stop(() => setStatus.mutate({ id: a.id, status: 'ARRIVED' }))}>{t('today.checkIn')}</Button>
     if (a.status === 'ARRIVED') return <Button size="sm" variant="outline" onClick={stop(() => startVisit(a))}>{t('today.sendIn')}</Button>
     if (a.status === 'IN_CONSULTATION' && doctorView && (a.practitionerId === user?.id || user?.role === Role.OWNER)) return <Button size="sm" variant="outline" onClick={stop(() => setStatus.mutate({ id: a.id, status: 'DONE' }))}>{t('today.finish')}</Button>
-    if (a.status === 'DONE' && canBill && a.patientId && owing.has(a.patientId)) return <Button size="sm" variant="outline" onClick={stop(() => openFile(a, 'billing'))}>Encaisser</Button>
+    if (a.status === 'DONE' && canBill && a.patientId && (owing.has(a.patientId) || !billedToday.has(a.patientId))) return <Button size="sm" variant="outline" onClick={stop(() => setPaying({ appointment: a, mode: owing.has(a.patientId!) ? 'collect' : 'visit' }))}>{L('Encaisser')}</Button>
     return null
   }
 
@@ -135,7 +145,7 @@ export default function Today() {
   const section = (title: string, rows: Appointment[], showDoctor: boolean, empty: string, head?: React.ReactNode) => (
     <section className="rounded-[14px] border border-[#D8E1DD] bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-[18px] pb-2.5 pt-4"><h2 className="text-[1.08rem] font-bold">{title}</h2>{head}</div>
-      {isLoading ? <p className="px-[18px] pb-5 text-sm text-[#5A6B65]">Chargement…</p>
+      {isLoading ? <p className="px-[18px] pb-5 text-sm text-[#5A6B65]">{L('Chargement…')}</p>
         : rows.length === 0 ? <p className="px-[18px] pb-6 pt-2 text-center text-[#5A6B65]">{empty}</p>
         : <div>{rows.map(a => row(a, showDoctor))}</div>}
     </section>
@@ -163,6 +173,15 @@ export default function Today() {
     <>
       <AppointmentDialog open={booking} onOpenChange={setBooking} />
       <WalkInDialog open={walkIn} onOpenChange={setWalkIn} />
+      <Dialog open={paying !== null} onOpenChange={(open) => !open && setPaying(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{L('Encaisser')}</DialogTitle>
+            <DialogDescription>{paying ? patientLabel(paying.appointment) : ''}</DialogDescription>
+          </DialogHeader>
+          {paying?.appointment.patientId && <ChargeForm patientId={paying.appointment.patientId} mode={paying.mode} onDone={() => setPaying(null)} />}
+        </DialogContent>
+      </Dialog>
     </>
   )
 
@@ -194,6 +213,7 @@ export default function Today() {
         subtitle={<span>{dayLabel} · {t('today.onList', { count: mine.length })}</span>}
         actions={user?.role === Role.OWNER ? addButtons : undefined}
       />
+      <SetupGuide />
 
       {current ? (
         <section className="grid gap-3.5 rounded-[18px] bg-primary px-6 py-[22px] text-white">

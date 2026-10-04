@@ -37,7 +37,7 @@ export const frExtra = {
   subscription: {
     manage: 'Gérer l’abonnement', plan: 'Plan', status: 'Statut', endsOn: 'Fin de période', quick: 'Raccourcis', plus3d: '+3 jours', plus1m: '+1 mois', plus1y: '+1 an', recordPayment: 'Enregistrer un paiement', amount: 'Montant (MAD)', method: 'Moyen de paiement', reference: 'Référence (optionnel)', save: 'Enregistrer', saved: 'Abonnement mis à jour', current: 'Actuellement',
     statuses: { TRIALING: 'Essai', ACTIVE: 'Actif', PAST_DUE: 'Expiré / impayé', SUSPENDED: 'Suspendu', CANCELLED: 'Annulé' },
-    methods: { CASH: 'Espèces', TRANSFER: 'Virement', CARD: 'Carte', OTHER: 'Autre' },
+    methods: { CASH: 'Espèces', TRANSFER: 'Virement', CARD: 'Carte', CMI: 'Carte bancaire (CMI)', OTHER: 'Autre' },
   },
   reminders: {
     tab: 'Rappels', title: 'Rappels automatiques', description: 'Vos clients reçoivent un rappel 1 heure avant leur rendez-vous.', enabled: 'Envoyer les rappels de rendez-vous', channel: 'Canal', both: 'WhatsApp + SMS', whatsappOnly: 'WhatsApp uniquement', smsOnly: 'SMS uniquement', saved: 'Préférences enregistrées', log: 'Derniers rappels envoyés', empty: 'Aucun rappel envoyé pour le moment', sentBadge: 'Rappel envoyé',
@@ -81,7 +81,7 @@ export const enExtra: typeof frExtra = {
   subscription: {
     manage: 'Manage subscription', plan: 'Plan', status: 'Status', endsOn: 'Period end', quick: 'Shortcuts', plus3d: '+3 days', plus1m: '+1 month', plus1y: '+1 year', recordPayment: 'Record a payment', amount: 'Amount (MAD)', method: 'Payment method', reference: 'Reference (optional)', save: 'Save', saved: 'Subscription updated', current: 'Currently',
     statuses: { TRIALING: 'Trial', ACTIVE: 'Active', PAST_DUE: 'Expired / unpaid', SUSPENDED: 'Suspended', CANCELLED: 'Cancelled' },
-    methods: { CASH: 'Cash', TRANSFER: 'Bank transfer', CARD: 'Card', OTHER: 'Other' },
+    methods: { CASH: 'Cash', TRANSFER: 'Bank transfer', CARD: 'Card', CMI: 'Bank card (CMI)', OTHER: 'Other' },
   },
   reminders: {
     tab: 'Reminders', title: 'Automatic reminders', description: 'Your clients get a reminder 1 hour before their appointment.', enabled: 'Send appointment reminders', channel: 'Channel', both: 'WhatsApp + SMS', whatsappOnly: 'WhatsApp only', smsOnly: 'SMS only', saved: 'Preferences saved', log: 'Latest reminders sent', empty: 'No reminders sent yet', sentBadge: 'Reminder sent',
@@ -123,7 +123,7 @@ export const arExtra: typeof frExtra = {
   subscription: {
     manage: 'إدارة الاشتراك', plan: 'الخطة', status: 'الحالة', endsOn: 'نهاية الفترة', quick: 'اختصارات', plus3d: '+3 أيام', plus1m: '+شهر', plus1y: '+سنة', recordPayment: 'تسجيل دفعة', amount: 'المبلغ (درهم)', method: 'طريقة الدفع', reference: 'المرجع (اختياري)', save: 'حفظ', saved: 'تم تحديث الاشتراك', current: 'حالياً',
     statuses: { TRIALING: 'تجربة', ACTIVE: 'نشط', PAST_DUE: 'منتهي / غير مدفوع', SUSPENDED: 'موقوف', CANCELLED: 'ملغى' },
-    methods: { CASH: 'نقداً', TRANSFER: 'تحويل بنكي', CARD: 'بطاقة', OTHER: 'أخرى' },
+    methods: { CASH: 'نقداً', TRANSFER: 'تحويل بنكي', CARD: 'بطاقة', CMI: 'بطاقة بنكية (CMI)', OTHER: 'أخرى' },
   },
   reminders: {
     tab: 'التذكيرات', title: 'التذكيرات التلقائية', description: 'يتلقى زبناؤك تذكيراً قبل موعدهم بساعة.', enabled: 'إرسال تذكيرات المواعيد', channel: 'القناة', both: 'واتساب + SMS', whatsappOnly: 'واتساب فقط', smsOnly: 'SMS فقط', saved: 'تم حفظ التفضيلات', log: 'آخر التذكيرات المرسلة', empty: 'لم يتم إرسال أي تذكير بعد', sentBadge: 'تم إرسال التذكير',

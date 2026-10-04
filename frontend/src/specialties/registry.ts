@@ -23,19 +23,19 @@ export const SPECIALTY_MODULES: Record<Specialty, SpecialtyModule> = {
   },
   PEDIATRICS: {
     code: 'PEDIATRICS', tab: 'Croissance et vaccins', component: lazy(() => import('./Pediatrics')),
-    features: ['Courbes de poids, taille, périmètre crânien et IMC par âge', 'Calendrier vaccinal PNI : faits, à faire, en retard', 'N° de lot des vaccins'],
+    features: ['Courbes OMS de poids, taille, PC et IMC, âge corrigé des prématurés, alerte de cassure', 'Calendrier vaccinal PNI : faits, à faire, en retard, n° de lot', 'Développement psychomoteur et dépistages (audition, vision, M-CHAT-R)', 'Doses selon le poids et ordonnance en un clic', 'Certificats : crèche, école, sport, vaccination, non-contagion'],
   },
   GYNECOLOGY: {
     code: 'GYNECOLOGY', tab: 'Grossesse et suivi', component: lazy(() => import('./Gynecology')),
-    features: ['Grossesse : SA, trimestre et terme depuis la DDR', 'Consultations, échographies, bilans, prise de poids', 'Contraception, frottis (alerte après 3 ans)'],
+    features: ['Grossesse : SA, terme, groupe et Rhésus, jumeaux, accouchement', 'Calendrier prénatal : examens faits, à faire, en retard', 'Échographies : biométrie, poids fœtal estimé (Hadlock) et percentile, datation par la LCC', 'Antécédents obstétricaux : gestité et parité calculées', 'Suivi gynécologique : contraception, frottis, test HPV, mammographie'],
   },
   OPHTHALMOLOGY: {
     code: 'OPHTHALMOLOGY', tab: 'Yeux', component: lazy(() => import('./Ophthalmology')),
-    features: ['Examen OD / OG : acuité, réfraction, tonus', 'Courbe de pression oculaire (seuil 21 mmHg)', 'Ordonnance de lunettes imprimable'],
+    features: ['Examen OD / OG : acuité, réfraction, tonus, pachymétrie', 'Glaucome : pression cible, champ visuel (MD, PSD, VFI), OCT RNFL et courbes', 'OCT, rétinographies et angiographies jointes, comparées dans le temps', 'Ordonnances de lunettes (prisme, EP) et de lentilles de contact', 'Biométrie, calcul d’implant SRK/T et compte rendu opératoire'],
   },
   CARDIOLOGY: {
     code: 'CARDIOLOGY', tab: 'Cœur', component: lazy(() => import('./Cardiology')),
-    features: ['Facteurs de risque cardiovasculaire', 'Courbes de tension, fréquence et INR (AVK)', 'Comptes rendus d’ECG'],
+    features: ['Plan de suivi : anticoagulation, cibles INR et tension, prochain contrôle', 'Scores CHA₂DS₂-VASc et HAS-BLED', 'ECG, échocardiographie, Holter, MAPA et épreuve d’effort avec tracés joints', 'Biologie : DFG (CKD-EPI) et cible LDL selon le risque'],
   },
   DERMATOLOGY: {
     code: 'DERMATOLOGY', tab: 'Peau', component: lazy(() => import('./Dermatology')),

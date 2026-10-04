@@ -3,16 +3,39 @@ import { AppError } from '../middleware/error';
 
 type Tx = Prisma.TransactionClient;
 
-/** Copies the Super Admin's default act catalogue of a specialty into a cabinet (skips codes it already has). */
+/** Short prefix of each specialty, used when two specialties of the same cabinet share an act code (CONS, CTRL…). */
+export const SPECIALTY_PREFIX: Record<string, string> = {
+  DENTISTRY: 'DEN', GENERAL: 'MG', PEDIATRICS: 'PED', GYNECOLOGY: 'GYN', OPHTHALMOLOGY: 'OPH',
+  CARDIOLOGY: 'CAR', DERMATOLOGY: 'DER', PHYSIOTHERAPY: 'KIN', PSYCHIATRY: 'PSY',
+};
+
+/**
+ * Copies the Super Admin's default act catalogue of a specialty into a cabinet, skipping the acts it already has
+ * (same specialty and same code, prefixed code or same name). Acts of a specialty other than the cabinet's main one
+ * get the specialty prefix (e.g. CAR-CONS), so codes shared by specialties (CONS, CTRL…) never clash. Prices already set are never changed.
+ */
 export async function copyDefaultActs(tx: Tx, cabinetId: string, specialty: string) {
   const defaults = await tx.defaultAct.findMany({ where: { specialty, isActive: true } });
   if (!defaults.length) return 0;
-  const existing = await tx.act.findMany({ where: { cabinetId }, select: { code: true } });
-  const known = new Set(existing.map(a => a.code));
-  const rows = defaults.filter(d => !known.has(d.code)).map(d => ({
-    cabinetId, specialty: d.specialty, code: d.code, name: d.name, price: d.price, category: d.category,
-    scope: d.scope, usesFaces: d.usesFaces, resultingState: d.resultingState,
-  }));
+  const existing = await tx.act.findMany({ where: { cabinetId, deletedAt: null }, select: { code: true, name: true, specialty: true } });
+  const codes = new Set(existing.map(a => a.code));
+  const prefix = SPECIALTY_PREFIX[specialty] || specialty.slice(0, 3);
+  // The cabinet's main specialty keeps the plain codes; any other specialty is always prefixed, so codes stay consistent.
+  const cabinet = await tx.cabinet.findUnique({ where: { id: cabinetId }, select: { specialty: true } });
+  const main = !cabinet || cabinet.specialty === specialty;
+  const mine = existing.filter(a => a.specialty === specialty);
+  const rows = [];
+  for (const d of defaults) {
+    const prefixed = `${prefix}-${d.code}`;
+    if (mine.some(a => a.code === d.code || a.code === prefixed || a.name.toLowerCase() === d.name.toLowerCase())) continue;
+    const code = main && !codes.has(d.code) ? d.code : prefixed;
+    if (codes.has(code)) continue;
+    codes.add(code);
+    rows.push({
+      cabinetId, specialty: d.specialty, code, name: d.name, price: d.price, category: d.category,
+      scope: d.scope, usesFaces: d.usesFaces, resultingState: d.resultingState,
+    });
+  }
   if (rows.length) await tx.act.createMany({ data: rows });
   return rows.length;
 }

@@ -7,6 +7,7 @@ import { NativeSelect } from '../components/ui/native-select'
 import { Textarea } from '../components/ui/textarea'
 import { ClinicalRecord, useRecords } from './records'
 import { Empty, Field, RecordMeta, Section } from './ui'
+import { useL } from '../lib/labels'
 
 type Lesion = { zone: string; type?: string | null; sizeMm?: number | null; description?: string | null; status: 'ACTIVE' | 'IMPROVING' | 'HEALED' }
 type Shape = { code: string; label: string; kind: 'rect' | 'ellipse'; x: number; y: number; w: number; h: number }
@@ -35,9 +36,9 @@ const outline = (side: 'FRONT' | 'BACK'): Shape[] => {
   ]
 }
 const ZONES = [...outline('FRONT'), ...outline('BACK')]
-export const zoneLabel = (code: string) => {
+export const zoneLabel = (code: string, L: (s: string) => string = s => s) => {
   const z = ZONES.find(x => x.code === code)
-  return z ? `${z.label} (${code.startsWith('FRONT') ? 'face avant' : 'face arrière'})` : code
+  return z ? `${L(z.label)} (${L(code.startsWith('FRONT') ? 'face avant' : 'face arrière')})` : code
 }
 const TYPES = ['Naevus', 'Eczéma', 'Psoriasis', 'Acné', 'Verrue', 'Kératose', 'Mycose', 'Urticaire', 'Lésion suspecte', 'Cicatrice', 'Autre']
 const STATUS: Record<Lesion['status'], [string, string]> = {
@@ -45,9 +46,10 @@ const STATUS: Record<Lesion['status'], [string, string]> = {
 }
 
 function BodyMap({ side, lesions, selected, onSelect }: { side: 'FRONT' | 'BACK'; lesions: ClinicalRecord<Lesion>[]; selected: string; onSelect: (code: string) => void }) {
+  const L = useL()
   return (
     <figure className="grid justify-items-center gap-1">
-      <svg viewBox="20 0 160 420" className="h-[360px] w-auto max-w-full" role="group" aria-label={side === 'FRONT' ? 'Face avant' : 'Face arrière'}>
+      <svg viewBox="20 0 160 420" className="h-[360px] w-auto max-w-full" role="group" aria-label={L(side === 'FRONT' ? 'Face avant' : 'Face arrière')}>
         {outline(side).map(z => {
           const here = lesions.filter(l => l.data.zone === z.code)
           const active = here.some(l => l.data.status !== 'HEALED')
@@ -58,32 +60,33 @@ function BodyMap({ side, lesions, selected, onSelect }: { side: 'FRONT' | 'BACK'
           const cy = z.kind === 'rect' ? z.y + z.h / 2 : z.y
           return (
             <g key={z.code}>
-              <title>{z.label}{here.length ? ` · ${here.length} lésion(s)` : ''}</title>
+              <title>{L(z.label)}{here.length ? ` · ${here.length} ${L('lésion(s)')}` : ''}</title>
               {z.kind === 'rect' ? <rect x={z.x} y={z.y} width={z.w} height={z.h} rx={9} {...common} /> : <ellipse cx={z.x} cy={z.y} rx={z.w} ry={z.h} {...common} />}
               {here.length > 0 && <text x={cx} y={cy + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill={active ? '#B8372C' : '#1E7A45'} pointerEvents="none">{here.length}</text>}
             </g>
           )
         })}
       </svg>
-      <figcaption className="text-[0.8rem] font-semibold text-[#5A6B65]">{side === 'FRONT' ? 'Face avant' : 'Face arrière'}</figcaption>
+      <figcaption className="text-[0.8rem] font-semibold text-[#5A6B65]">{L(side === 'FRONT' ? 'Face avant' : 'Face arrière')}</figcaption>
     </figure>
   )
 }
 
 /** Dermatology: body map to place lesions, lesion follow-up (photos go to the Documents tab). */
 export default function Dermatology({ patient }: { patient: Patient }) {
+  const L = useL()
   const { ofKind, save, remove, isLoading } = useRecords(patient.id, 'DERMATOLOGY')
   const lesions = ofKind<Lesion>('LESION')
   const [zone, setZone] = useState('')
   const [form, setForm] = useState({ type: 'Naevus', sizeMm: '', description: '' })
   const active = lesions.filter(l => l.data.status !== 'HEALED')
 
-  if (isLoading) return <p className="py-8 text-center text-[#5A6B65]">Chargement…</p>
+  if (isLoading) return <p className="py-8 text-center text-[#5A6B65]">{L('Chargement…')}</p>
 
   return (
     <div className="grid gap-5">
-      <Section title="Carte des lésions" hint="Touchez une zone du corps pour y noter une lésion. Les photos se joignent dans l’onglet Documents."
-        action={active.length > 0 ? <span className="rounded-full bg-[#FBE3E0] px-2.5 py-1 text-[0.8rem] font-bold text-[#B8372C]">{active.length} active(s)</span> : undefined}>
+      <Section title={L('Carte des lésions')} hint={L('Touchez une zone du corps pour y noter une lésion. Les photos se joignent dans l’onglet Documents.')}
+        action={active.length > 0 ? <span className="rounded-full bg-[#FBE3E0] px-2.5 py-1 text-[0.8rem] font-bold text-[#B8372C]">{active.length} {L('active(s)')}</span> : undefined}>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="flex flex-wrap justify-center gap-4" dir="ltr">
             <BodyMap side="FRONT" lesions={lesions} selected={zone} onSelect={setZone} />
@@ -96,34 +99,34 @@ export default function Dermatology({ patient }: { patient: Patient }) {
                 onSuccess: () => setForm({ type: 'Naevus', sizeMm: '', description: '' }),
               })
             }}>
-              <p className="font-bold">Nouvelle lésion · {zoneLabel(zone)}</p>
+              <p className="font-bold">{L('Nouvelle lésion')} · {zoneLabel(zone, L)}</p>
               <div className="grid grid-cols-[1fr_120px] gap-3">
-                <div className="space-y-1.5"><Label htmlFor="les-type">Type</Label>
-                  <NativeSelect id="les-type" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>{TYPES.map(t => <option key={t}>{t}</option>)}</NativeSelect>
+                <div className="space-y-1.5"><Label htmlFor="les-type">{L('Type')}</Label>
+                  <NativeSelect id="les-type" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>{TYPES.map(t => <option key={t} value={t}>{L(t)}</option>)}</NativeSelect>
                 </div>
-                <Field id="les-size" label="Taille" type="number" unit="mm" value={form.sizeMm} onChange={v => setForm(f => ({ ...f, sizeMm: v }))} />
+                <Field id="les-size" label={L('Taille')} type="number" unit="mm" value={form.sizeMm} onChange={v => setForm(f => ({ ...f, sizeMm: v }))} />
               </div>
-              <div className="space-y-1.5"><Label htmlFor="les-desc">Description</Label><Textarea id="les-desc" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Aspect, couleur, bords, évolution…" /></div>
-              <div className="flex gap-2"><Button type="submit" disabled={save.isPending}>Ajouter la lésion</Button><Button type="button" variant="ghost" onClick={() => setZone('')}>Annuler</Button></div>
+              <div className="space-y-1.5"><Label htmlFor="les-desc">{L('Description')}</Label><Textarea id="les-desc" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={L('Aspect, couleur, bords, évolution…')} /></div>
+              <div className="flex gap-2"><Button type="submit" disabled={save.isPending}>{L('Ajouter la lésion')}</Button><Button type="button" variant="ghost" onClick={() => setZone('')}>{L('Annuler')}</Button></div>
             </form>
-          ) : <Empty>Choisissez une zone sur le schéma.</Empty>}
+          ) : <Empty>{L('Choisissez une zone sur le schéma.')}</Empty>}
         </div>
       </Section>
 
-      <Section title="Suivi des lésions">
-        {lesions.length === 0 ? <Empty>Aucune lésion notée.</Empty> : (
+      <Section title={L('Suivi des lésions')}>
+        {lesions.length === 0 ? <Empty>{L('Aucune lésion notée.')}</Empty> : (
           <ul className="grid gap-2">
             {lesions.map(r => (
               <li key={r.id} className={cn('grid gap-1 rounded-xl border p-3 text-[0.9rem]', zone === r.data.zone ? 'border-primary' : 'border-[#E3EAE7]')}>
                 <RecordMeta record={r} onDelete={() => remove.mutate(r.id)} />
                 <div className="flex flex-wrap items-center gap-2">
-                  <b>{r.data.type || 'Lésion'}</b><span className="text-[#5A6B65]">· {zoneLabel(r.data.zone)}{r.data.sizeMm ? ` · ${r.data.sizeMm} mm` : ''}</span>
-                  <span className={cn('rounded-full px-2 py-0.5 text-[0.75rem] font-bold', STATUS[r.data.status][1])}>{STATUS[r.data.status][0]}</span>
+                  <b>{L(r.data.type || 'Lésion')}</b><span className="text-[#5A6B65]">· {zoneLabel(r.data.zone, L)}{r.data.sizeMm ? ` · ${r.data.sizeMm} mm` : ''}</span>
+                  <span className={cn('rounded-full px-2 py-0.5 text-[0.75rem] font-bold', STATUS[r.data.status][1])}>{L(STATUS[r.data.status][0])}</span>
                 </div>
                 {r.data.description && <p className="text-[#5A6B65]">{r.data.description}</p>}
                 <div className="flex flex-wrap gap-1.5">
                   {(Object.keys(STATUS) as Lesion['status'][]).filter(s => s !== r.data.status).map(s => (
-                    <Button key={s} size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate({ id: r.id, kind: 'LESION', data: { ...r.data, status: s } })}>{STATUS[s][0]}</Button>
+                    <Button key={s} size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate({ id: r.id, kind: 'LESION', data: { ...r.data, status: s } })}>{L(STATUS[s][0])}</Button>
                   ))}
                 </div>
               </li>

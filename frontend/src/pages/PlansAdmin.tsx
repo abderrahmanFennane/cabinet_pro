@@ -27,6 +27,7 @@ import { PERMISSIONS, PERMISSIONS_BY_MODULE, PERMISSION_LABELS, type PermissionK
 import { useTranslation } from 'react-i18next'
 import { EmptyState, PageHeader } from '../components/layout/PageHeader'
 import { toneAt } from '../lib/tones'
+import { useL } from '../lib/labels'
 
 type Plan = {
   id: string
@@ -57,6 +58,7 @@ type Form = {
 const EMPTY_FORM: Form = { code: '', name: '', monthlyPrice: '0', durationMonths: '1', maxPractitioners: '1', maxAssistants: '1', monthlyMessages: '100', storageGb: '5', permissions: [] }
 
 export default function PlansAdmin() {
+  const L = useL()
     const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [form, setForm] = useState<Form>(EMPTY_FORM)
@@ -92,9 +94,9 @@ export default function PlansAdmin() {
       })
       setForm(EMPTY_FORM)
       setFormOpen(false)
-      toast({ title: 'Plan créé', variant: 'success' })
+      toast({ title: L('Plan créé'), variant: 'success' })
     },
-    onError: (err: any) => toast({ title: 'Erreur', description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: L('Erreur'), description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
   })
 
   const update = useMutation({
@@ -108,9 +110,9 @@ export default function PlansAdmin() {
       setEditing(null)
       setForm(EMPTY_FORM)
       setFormOpen(false)
-      toast({ title: 'Plan modifié', variant: 'success' })
+      toast({ title: L('Plan modifié'), variant: 'success' })
     },
-    onError: (err: any) => toast({ title: 'Erreur', description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: L('Erreur'), description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
   })
 
   const toggle = useMutation({
@@ -131,9 +133,9 @@ export default function PlansAdmin() {
         const list = (current || []) as Plan[]
         return list.filter(p => p.id !== id)
       })
-      toast({ title: 'Plan supprimé', variant: 'success' })
+      toast({ title: L('Plan supprimé'), variant: 'success' })
     },
-    onError: (err: any) => toast({ title: 'Suppression impossible', description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: L('Suppression impossible'), description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
   })
 
   const startCreate = () => {
@@ -175,7 +177,7 @@ export default function PlansAdmin() {
   // The three features that differ between plans, then how many of the others are included.
   const permissionBadges = (plan: Plan) => {
     const perms = plan.permissions || []
-    const key: [PermissionKey, string][] = [['DENTAL_TREATMENT_PLAN', 'Plans de traitement'], ['ADVANCED_STATS', 'Stats avancées'], ['MULTI_SPECIALTY', 'Multi-spécialités']]
+    const key: [PermissionKey, string][] = [['DENTAL_TREATMENT_PLAN', L('Plans de traitement')], ['ADVANCED_STATS', L('Stats avancées')], ['MULTI_SPECIALTY', L('Multi-spécialités')]]
     return (
       <div className="grid gap-1 text-[0.82rem]">
         <span className="text-[#5A6B65]">{perms.length} / {PERMISSIONS.length} fonctions</span>
@@ -187,15 +189,15 @@ export default function PlansAdmin() {
       </div>
     )
   }
-  const limits = (plan: Plan) => `${plan.maxPractitioners} praticien${plan.maxPractitioners > 1 ? 's' : ''} · ${plan.maxAssistants >= 999 ? 'assistants illimités' : `${plan.maxAssistants} assistant${plan.maxAssistants > 1 ? 's' : ''}`}`
+  const limits = (plan: Plan) => `${plan.maxPractitioners} ${L(plan.maxPractitioners > 1 ? 'praticiens' : 'praticien')} · ${plan.maxAssistants >= 999 ? L('assistants illimités') : `${plan.maxAssistants} ${L(plan.maxAssistants > 1 ? 'assistants' : 'assistant')}`}`
 
   return (
     <div className="mx-auto max-w-8xl space-y-6">
       <AlertDialog open={deletePlan !== null} onOpenChange={(v) => !v && setDeletePlan(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le plan ?</AlertDialogTitle>
-            <AlertDialogDescription>Un plan utilisé par un cabinet ne peut pas être supprimé.</AlertDialogDescription>
+            <AlertDialogTitle>{L('Supprimer le plan ?')}</AlertDialogTitle>
+            <AlertDialogDescription>{L('Un plan utilisé par un cabinet ne peut pas être supprimé.')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
@@ -212,8 +214,8 @@ export default function PlansAdmin() {
       </AlertDialog>
       <PageHeader
         title={t('nav.plans')}
-        subtitle="Gérez les offres, les quotas et les permissions incluses."
-        actions={<Button size="lg" className="gap-2" onClick={startCreate}><Plus size={18} /> Nouveau plan</Button>}
+        subtitle={L('Gérez les offres, les quotas et les permissions incluses.')}
+        actions={<Button size="lg" className="gap-2" onClick={startCreate}><Plus size={18} /> {L('Nouveau plan')}</Button>}
       />
 
       {/* Phones: one card per plan */}
@@ -231,7 +233,7 @@ export default function PlansAdmin() {
                 </div>
                 <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" title="Actions">
+                          <Button variant="ghost" size="icon" title={L('Actions')}>
                             <MoreHorizontal size={18} />
                           </Button>
                         </DropdownMenuTrigger>
@@ -243,7 +245,7 @@ export default function PlansAdmin() {
                             <Pencil size={14} className="me-2" /> Modifier
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggle.mutate(plan)}>
-                            {plan.isActive ? 'Désactiver' : 'Activer'}
+                            {plan.isActive ? L('Désactiver') : L('Activer')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeletePlan(plan)}>
@@ -262,13 +264,13 @@ export default function PlansAdmin() {
           </Card>
         ))}
         {!plans.isLoading && (plans.data || []).length === 0 && (
-          <Card className="sm:col-span-2"><CardContent className="p-0"><EmptyState icon={<Plus size={24} />} title="Aucun plan." action={<Button onClick={startCreate}>Nouveau plan</Button>} /></CardContent></Card>
+          <Card className="sm:col-span-2"><CardContent className="p-0"><EmptyState icon={<Plus size={24} />} title={L('Aucun plan.')} action={<Button onClick={startCreate}>{L('Nouveau plan')}</Button>} /></CardContent></Card>
         )}
       </div>
 
       <Card className="hidden overflow-hidden lg:block">
         <CardHeader>
-          <CardTitle>Liste des plans</CardTitle>
+          <CardTitle>{L('Liste des plans')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -304,7 +306,7 @@ export default function PlansAdmin() {
                     <div className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" title="Actions">
+                          <Button variant="ghost" size="icon" title={L('Actions')}>
                             <MoreHorizontal size={18} />
                           </Button>
                         </DropdownMenuTrigger>
@@ -316,7 +318,7 @@ export default function PlansAdmin() {
                             <Pencil size={14} className="me-2" /> Modifier
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggle.mutate(plan)}>
-                            {plan.isActive ? 'Désactiver' : 'Activer'}
+                            {plan.isActive ? L('Désactiver') : L('Activer')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeletePlan(plan)}>
@@ -351,27 +353,27 @@ export default function PlansAdmin() {
       }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Modifier un plan' : 'Créer un plan'}</DialogTitle>
-            <DialogDescription>Définissez les quotas et les permissions incluses.</DialogDescription>
+            <DialogTitle>{editing ? L('Modifier un plan') : L('Créer un plan')}</DialogTitle>
+            <DialogDescription>{L('Définissez les quotas et les permissions incluses.')}</DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="space-y-1.5"><Label>Code</Label><Input value={form.code} onChange={e => setField('code', e.target.value)} placeholder="PRO" /></div>
-            <div className="space-y-1.5"><Label>Nom</Label><Input value={form.name} onChange={e => setField('name', e.target.value)} placeholder="Professionnel" /></div>
-            <div className="space-y-1.5"><Label>Prix</Label><Input type="number" min="0" value={form.monthlyPrice} onChange={e => setField('monthlyPrice', e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Durée (mois)</Label><Input type="number" min="1" value={form.durationMonths} onChange={e => setField('durationMonths', e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Praticiens max.</Label><Input type="number" min="1" value={form.maxPractitioners} onChange={e => setField('maxPractitioners', e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Assistants max.</Label><Input type="number" min="1" value={form.maxAssistants} onChange={e => setField('maxAssistants', e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Messages / mois</Label><Input type="number" min="0" value={form.monthlyMessages} onChange={e => setField('monthlyMessages', e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Stockage (Go)</Label><Input type="number" min="0" value={form.storageGb} onChange={e => setField('storageGb', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{L('Code')}</Label><Input value={form.code} onChange={e => setField('code', e.target.value)} placeholder={L('PRO')} /></div>
+            <div className="space-y-1.5"><Label>{L('Nom')}</Label><Input value={form.name} onChange={e => setField('name', e.target.value)} placeholder={L('Professionnel')} /></div>
+            <div className="space-y-1.5"><Label>{L('Prix')}</Label><Input type="number" min="0" value={form.monthlyPrice} onChange={e => setField('monthlyPrice', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{L('Durée (mois)')}</Label><Input type="number" min="1" value={form.durationMonths} onChange={e => setField('durationMonths', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{L('Praticiens max.')}</Label><Input type="number" min="1" value={form.maxPractitioners} onChange={e => setField('maxPractitioners', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{L('Assistants max.')}</Label><Input type="number" min="1" value={form.maxAssistants} onChange={e => setField('maxAssistants', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{L('Messages / mois')}</Label><Input type="number" min="0" value={form.monthlyMessages} onChange={e => setField('monthlyMessages', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{L('Stockage (Go)')}</Label><Input type="number" min="0" value={form.storageGb} onChange={e => setField('storageGb', e.target.value)} /></div>
           </div>
 
           <div>
             <div className="flex items-center justify-between gap-3">
-              <Label>Permissions incluses</Label>
+              <Label>{L('Permissions incluses')}</Label>
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setPermissions(PERMISSIONS.map(p => p.key))}>Tout</Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => setPermissions([])}>Aucun</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setPermissions(PERMISSIONS.map(p => p.key))}>{L('Tout')}</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setPermissions([])}>{L('Aucun')}</Button>
               </div>
             </div>
             <ScrollArea className="mt-2 h-64 rounded-2xl border border-[#D8E1DD] bg-[#F2F5F3]">
@@ -397,7 +399,7 @@ export default function PlansAdmin() {
                 ))}
               </div>
             </ScrollArea>
-            <div className="mt-2 text-xs text-muted-foreground">Aucune permission sélectionnée = aucune fonctionnalité accessible.</div>
+            <div className="mt-2 text-xs text-muted-foreground">{L('Aucune permission sélectionnée = aucune fonctionnalité accessible.')}</div>
           </div>
 
           <DialogFooter>
@@ -420,30 +422,30 @@ export default function PlansAdmin() {
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="text-base">Tarif</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{L('Tarif')}</CardTitle></CardHeader>
               <CardContent className="text-sm text-foreground">
                 <div>{formatPrice(viewing?.monthlyPrice)} MAD</div>
                 <div className="text-muted-foreground">{viewing?.durationMonths} mois</div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base">Statut</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{L('Statut')}</CardTitle></CardHeader>
               <CardContent>
                 {viewing && <Badge variant={viewing.isActive ? 'success' : 'destructive'}>{viewing.isActive ? t('common.active') : t('common.inactive')}</Badge>}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base">Limites</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{L('Limites')}</CardTitle></CardHeader>
               <CardContent className="text-sm text-foreground">
                 <div>{viewing ? limits(viewing) : null}</div>
               </CardContent>
             </Card>
             <Card className="sm:col-span-2">
-              <CardHeader><CardTitle className="text-base">Permissions incluses</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{L('Permissions incluses')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {(viewing?.permissions || []).length === 0 && (
-                    <span className="text-sm text-muted-foreground">Aucune</span>
+                    <span className="text-sm text-muted-foreground">{L('Aucune')}</span>
                   )}
                   {(viewing?.permissions || []).map(p => (
                     <Badge key={p} variant="secondary">{PERMISSION_LABELS[p] || p}</Badge>
@@ -456,7 +458,7 @@ export default function PlansAdmin() {
             {viewing && (
               <>
                 <Button variant="outline" onClick={() => startEdit(viewing)}>{t('common.edit')}</Button>
-                <Button variant="outline" onClick={() => toggle.mutate(viewing)}>{viewing.isActive ? 'Désactiver' : 'Activer'}</Button>
+                <Button variant="outline" onClick={() => toggle.mutate(viewing)}>{viewing.isActive ? L('Désactiver') : L('Activer')}</Button>
               </>
             )}
             <Button onClick={() => setViewing(null)}>{t('common.close')}</Button>

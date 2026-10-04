@@ -9,9 +9,11 @@ import { Input } from '../ui/input'
 import { NativeSelect } from '../ui/native-select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { PatientPicker } from './AppointmentDialog'
+import { useL } from '../../lib/labels'
 
 /** Patient arriving without an appointment: goes straight to the waiting room. */
 export default function WalkInDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const L = useL()
   const { user } = useAuth()
   const cabinetApi = useCabinetApi()
   const queryClient = useQueryClient()
@@ -29,7 +31,7 @@ export default function WalkInDialog({ open, onOpenChange }: { open: boolean; on
   const add = useMutation({
     mutationFn: () => api.post(`${cabinetApi}/appointments/walk-in`, { patientId: picked!.id, practitionerId: practitionerId || undefined, reason: reason || null }),
     onSuccess: () => {
-      toast.success('Patient ajouté à la salle d’attente')
+      toast.success(L('Patient ajouté à la salle d’attente'))
       onOpenChange(false); setPicked(null); setReason('')
       queryClient.invalidateQueries({ queryKey: ['waiting-room'] })
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
@@ -40,19 +42,19 @@ export default function WalkInDialog({ open, onOpenChange }: { open: boolean; on
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Patient sans rendez-vous</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{L('Patient sans rendez-vous')}</DialogTitle></DialogHeader>
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (picked) add.mutate() }}>
-          <div className="space-y-1.5"><Label>Patient</Label><PatientPicker value={picked} onChange={setPicked} /></div>
+          <div className="space-y-1.5"><Label>{L('Patient')}</Label><PatientPicker value={picked} onChange={setPicked} /></div>
           {user?.role !== 'PRACTITIONER' && (
-            <div className="space-y-1.5"><Label htmlFor="wi-prac">Praticien</Label>
+            <div className="space-y-1.5"><Label htmlFor="wi-prac">{L('Praticien')}</Label>
               <NativeSelect id="wi-prac" value={practitionerId} onChange={e => setPractitionerId(e.target.value)} required={user?.role !== 'OWNER'}>
-                {user?.role === 'OWNER' && <option value="">Moi-même</option>}
+                {user?.role === 'OWNER' && <option value="">{L('Moi-même')}</option>}
                 {practitioners.filter(p => p.id !== user?.id).map(p => <option key={p.id} value={p.id}>{practitionerName(p)}</option>)}
               </NativeSelect>
             </div>
           )}
-          <div className="space-y-1.5"><Label htmlFor="wi-reason">Motif</Label><Input id="wi-reason" value={reason} onChange={e => setReason(e.target.value)} /></div>
-          <Button type="submit" className="w-full" disabled={!picked || add.isPending}>Ajouter à la salle d’attente</Button>
+          <div className="space-y-1.5"><Label htmlFor="wi-reason">{L('Motif')}</Label><Input id="wi-reason" value={reason} onChange={e => setReason(e.target.value)} /></div>
+          <Button type="submit" className="w-full" disabled={!picked || add.isPending}>{L('Ajouter à la salle d’attente')}</Button>
         </form>
       </DialogContent>
     </Dialog>

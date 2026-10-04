@@ -93,7 +93,7 @@ export default function InvoicesAdmin() {
                         <TableCell className="text-end font-bold">{formatCurrency(Number(invoice.amount), invoice.currency)}</TableCell>
                         <TableCell><InvoiceStatus status={invoice.status} /></TableCell>
                         <TableCell>
-                          {invoice.paymentMethod ? t(`subscription.methods.${invoice.paymentMethod}`, invoice.paymentMethod) : invoice.invoiceUrl ? 'Stripe' : '—'}
+                          {invoice.paymentMethod ? t(`subscription.methods.${invoice.paymentMethod}`, invoice.paymentMethod) : '—'}
                           {invoice.reference && <p className="text-xs text-[#8A9A94]">{invoice.reference}</p>}
                         </TableCell>
                         <TableCell>{invoice.paidAt ? formatDateFR(invoice.paidAt) : '—'}</TableCell>

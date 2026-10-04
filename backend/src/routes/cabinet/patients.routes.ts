@@ -6,6 +6,9 @@ import { AppError } from '../../middleware/error';
 import { sendSuccess } from '../../utils/response';
 import { ageInYears, dentitionForAge } from '../../utils/dental';
 import { findPatientOr404, logPatientAccess, patientWhere, toNumber } from '../../utils/patient-scope';
+import multer from 'multer';
+import ExcelJS from 'exceljs';
+import { MEDICAL_COLUMNS, parsePatientFile, TEMPLATE_EXAMPLE, TEMPLATE_HEADERS } from '../../services/patient-import';
 
 const router = Router({ mergeParams: true });
 
@@ -141,6 +144,91 @@ router.get('/duplicates', requirePermissions('MANAGE_PATIENTS'), async (req: Req
     if (!or.length) return sendSuccess(res, []);
     const items = await prisma.patient.findMany({ where: { cabinetId: req.params.cabinetId, deletedAt: null, OR: or }, take: 5 });
     sendSuccess(res, items.map(p => serialize(p, false)));
+  } catch (err) { next(err); }
+});
+
+// ─── Import of an existing patient list (Excel / CSV) ───
+
+const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+router.get('/import/template', requirePermissions('MANAGE_PATIENTS'), async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Patients');
+    ws.addRow(TEMPLATE_HEADERS).font = { bold: true };
+    ws.addRow(TEMPLATE_EXAMPLE);
+    ws.columns.forEach(c => { c.width = 18; });
+    ws.getColumn(4).numFmt = '@';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="modele-import-patients.xlsx"');
+    res.send(Buffer.from(await wb.xlsx.writeBuffer()));
+  } catch (err) { next(err); }
+});
+
+const dupKeys = (p: { firstName: string; lastName: string; phone?: string | null; cin?: string | null; birthDate?: Date | null }) => {
+  const name = `${p.lastName} ${p.firstName}`.normalize('NFD').replace(/[^a-zA-Z]/g, '').toLowerCase();
+  const keys: string[] = [];
+  if (p.cin) keys.push(`cin:${p.cin.toUpperCase()}`);
+  if (p.phone) keys.push(`tel:${p.phone.replace(/\D/g, '').slice(-9)}:${name}`);
+  if (p.birthDate) keys.push(`ddn:${new Date(p.birthDate).toISOString().slice(0, 10)}:${name}`);
+  return keys;
+};
+
+/**
+ * POST with ?confirm=1 creates the patients; without it, only checks the file (preview).
+ * Lines with errors and patients already in the cabinet (same CIN, or same name with the same phone or birth date) are skipped.
+ */
+router.post('/import', requirePermissions('MANAGE_PATIENTS'), importUpload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.file) throw new AppError('Choisissez un fichier Excel (.xlsx) ou CSV', 400);
+    let parsed;
+    try { parsed = await parsePatientFile(req.file.buffer, req.file.originalname); } catch (err: any) {
+      throw new AppError(/zip|central directory/i.test(err.message) ? 'Fichier illisible : enregistrez-le au format Excel (.xlsx) ou CSV.' : err.message, 400);
+    }
+    const withMedical = canSeeMedical(req);
+    const existing = await prisma.patient.findMany({
+      where: { cabinetId: req.params.cabinetId, deletedAt: null },
+      select: { firstName: true, lastName: true, phone: true, cin: true, birthDate: true },
+    });
+    const known = new Set(existing.flatMap(dupKeys));
+    let medicalDropped = false;
+    const toCreate: any[] = [];
+    const lines = parsed.lines.map(l => {
+      if (!l.patient) return { ...l, status: 'ERROR' as const };
+      const keys = dupKeys(l.patient);
+      if (keys.some(k => known.has(k))) return { ...l, status: 'DUPLICATE' as const };
+      keys.forEach(k => known.add(k)); // the same patient twice in the file
+      const data: any = { ...l.patient, cabinetId: req.params.cabinetId };
+      if (!withMedical) {
+        for (const key of MEDICAL_COLUMNS) if (data[key]) { medicalDropped = true; delete data[key]; }
+      }
+      if (req.user?.role === 'OWNER' || req.user?.role === 'PRACTITIONER') data.primaryPractitionerId = req.user.id;
+      toCreate.push(data);
+      return { ...l, status: 'NEW' as const };
+    });
+    const summary = {
+      total: lines.length,
+      new: lines.filter(l => l.status === 'NEW').length,
+      duplicates: lines.filter(l => l.status === 'DUPLICATE').length,
+      errors: lines.filter(l => l.status === 'ERROR').length,
+      columns: parsed.columns,
+      ignoredColumns: parsed.ignored,
+      medicalDropped,
+    };
+
+    if (req.query.confirm !== '1') {
+      // Preview: every line with a problem, plus the first new ones.
+      const shown = [...lines.filter(l => l.status !== 'NEW'), ...lines.filter(l => l.status === 'NEW').slice(0, 20)]
+        .sort((a, b) => a.line - b.line).slice(0, 200)
+        .map(l => ({ line: l.line, status: l.status, errors: l.errors, warnings: l.warnings, name: l.patient ? `${l.patient.lastName} ${l.patient.firstName}` : null, phone: l.patient?.phone ?? null, birthDate: l.patient?.birthDate ?? null, coverage: l.patient?.coverage ?? null }));
+      sendSuccess(res, { ...summary, lines: shown });
+      return;
+    }
+
+    for (let i = 0; i < toCreate.length; i += 500) {
+      await prisma.patient.createMany({ data: toCreate.slice(i, i + 500) });
+    }
+    sendSuccess(res, { ...summary, created: toCreate.length }, `${toCreate.length} patient(s) importé(s)`, undefined, 201);
   } catch (err) { next(err); }
 });
 

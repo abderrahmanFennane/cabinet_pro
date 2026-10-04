@@ -8,10 +8,12 @@ import { Label } from '../components/ui/label'
 import { toast } from '../components/ui/toast'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '../components/layout/PageHeader'
-import { Headset } from 'lucide-react'
+import { Headset, Pill, Stethoscope } from 'lucide-react'
 import { AppSettings } from '../types'
+import { useL } from '../lib/labels'
 
 export default function SuperAdminSettings() {
+  const L = useL()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
@@ -52,11 +54,11 @@ export default function SuperAdminSettings() {
 
   return (
     <div className="space-y-6 no-print max-w-5xl mx-auto">
-      <PageHeader title={t('nav.settings')} subtitle="Nom, logo et coordonnées affichés aux cabinets" />
+      <PageHeader title={t('nav.settings')} subtitle={L('Nom, logo et coordonnées affichés aux cabinets')} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Nom du projet</CardTitle>
+          <CardTitle>{L('Nom du projet')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
@@ -77,7 +79,7 @@ export default function SuperAdminSettings() {
                 setSaving(true)
                 try {
                   await update.mutateAsync({ businessName: form.businessName || null })
-                  toast({ title: 'Enregistré', variant: 'success' })
+                  toast({ title: L('Enregistré'), variant: 'success' })
                 } finally {
                   setSaving(false)
                 }
@@ -109,7 +111,7 @@ export default function SuperAdminSettings() {
             </div>
             <div className="space-y-1.5">
               <Label>{t('support.email')}</Label>
-              <Input type="email" value={support.supportEmail} onChange={e => setSupport({ ...support, supportEmail: e.target.value })} placeholder="contact@exemple.ma" />
+              <Input type="email" value={support.supportEmail} onChange={e => setSupport({ ...support, supportEmail: e.target.value })} placeholder={L('contact@exemple.ma')} />
             </div>
           </div>
           <div className="flex justify-end">
@@ -123,7 +125,7 @@ export default function SuperAdminSettings() {
                   supportWhatsapp: support.supportWhatsapp || null,
                   supportEmail: support.supportEmail || null,
                 })
-                toast({ title: 'Enregistré', variant: 'success' })
+                toast({ title: L('Enregistré'), variant: 'success' })
               }}
             >
               {t('common.save')}
@@ -134,7 +136,7 @@ export default function SuperAdminSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Logo du projet</CardTitle>
+          <CardTitle>{L('Logo du projet')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-3 rounded-2xl bg-[#F2F5F3] p-3">
@@ -145,7 +147,7 @@ export default function SuperAdminSettings() {
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-[#14231E]">{appSettings?.businessName || t('dashboard.global')}</p>
-              <p className="text-xs text-[#5A6B65]">Affiché dans l’en-tête Super Admin</p>
+              <p className="text-xs text-[#5A6B65]">{L('Affiché dans l’en-tête Super Admin')}</p>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -159,7 +161,7 @@ export default function SuperAdminSettings() {
                 try {
                   const url = await uploadLogo(file)
                   if (url) await update.mutateAsync({ businessLogo: url })
-                  toast({ title: 'Logo mis à jour', variant: 'success' })
+                  toast({ title: L('Logo mis à jour'), variant: 'success' })
                 } catch (err: any) {
                   toast({ title: t('common.error'), description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' })
                 }
@@ -172,7 +174,7 @@ export default function SuperAdminSettings() {
                 variant="outline"
                 onClick={async () => {
                   await update.mutateAsync({ businessLogo: null })
-                  toast({ title: 'Logo supprimé', variant: 'success' })
+                  toast({ title: L('Logo supprimé'), variant: 'success' })
                 }}
               >
                 {t('common.delete')}
@@ -181,6 +183,76 @@ export default function SuperAdminSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <DrugListCard />
+      <DiagnosisCodesCard />
     </div>
+  )
+}
+
+/** National medicine list used by the prescription autocomplete: size and import of a newer reference file. */
+function DrugListCard() {
+  const L = useL()
+  const queryClient = useQueryClient()
+  const { data } = useQuery({
+    queryKey: ['drugs-admin'],
+    queryFn: async () => (await api.get('/drugs')).data.data as { count: number; generics: number; updatedAt: string | null },
+  })
+  const importFile = useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append('file', file)
+      return api.post('/drugs/import', body)
+    },
+    onSuccess: (r) => { toast({ title: r.data.message, variant: 'success' }); queryClient.invalidateQueries({ queryKey: ['drugs-admin'] }) },
+    onError: (err: any) => toast({ title: L('Import impossible'), description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
+  })
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2.5"><Pill size={18} className="text-primary" />{L('Liste nationale des médicaments')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p>
+          <b>{data?.count?.toLocaleString('fr-FR') ?? '…'}</b> {L('médicaments, dont')} {data?.generics?.toLocaleString('fr-FR') ?? '…'} {L('génériques')}
+          {data?.updatedAt ? ` · ${L('mise à jour le')} ${new Date(data.updatedAt).toLocaleDateString('fr-FR')}` : ''}.
+          {L('Proposés aux médecins lorsqu’ils rédigent une ordonnance.')}
+        </p>
+        <p className="text-xs text-[#5A6B65]">
+          {L('Source fournie : « Référentiel des médicaments » de la CNOPS (data.gov.ma, licence ODbL), prix de 2014.')}
+          {L('Pour des prix à jour, importez un fichier Excel plus récent avec les colonnes CODE, NOM, DCI1, DOSAGE1, UNITE_DOSAGE1, FORME, PRESENTATION, PPV, PRINCEPS_GENERIQUE, TAUX_REMBOURSEMENT. La liste actuelle est remplacée.')}
+        </p>
+        <Input
+          type="file"
+          accept=".xlsx"
+          disabled={importFile.isPending}
+          onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) importFile.mutate(file) }}
+          className="cursor-pointer pt-2.5"
+        />
+        {importFile.isPending && <p className="text-xs text-[#5A6B65]">{L('Import en cours…')}</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+/** ICD-10 list used to code diagnoses: starter list included, the complete list can be imported. */
+function DiagnosisCodesCard() {
+  const L = useL()
+  const queryClient = useQueryClient()
+  const { data } = useQuery({ queryKey: ['diagnosis-codes-admin'], queryFn: async () => (await api.get('/diagnosis-codes')).data.data as { count: number } })
+  const importFile = useMutation({
+    mutationFn: (file: File) => { const body = new FormData(); body.append('file', file); return api.post('/diagnosis-codes/import', body) },
+    onSuccess: (r) => { toast({ title: r.data.message, variant: 'success' }); queryClient.invalidateQueries({ queryKey: ['diagnosis-codes-admin'] }) },
+    onError: (err: any) => toast({ title: L('Import impossible'), description: err.response?.data?.message || err.response?.data?.error, variant: 'destructive' }),
+  })
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2.5"><Stethoscope size={18} className="text-primary" />{L('Codes diagnostiques CIM-10')}</CardTitle></CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p><b>{data?.count?.toLocaleString('fr-FR') ?? '…'}</b> {L('codes proposés aux médecins dans la consultation.')}</p>
+        <p className="text-xs text-[#5A6B65]">{L('Une liste de départ des codes les plus courants est fournie. Pour la liste complète, importez un fichier Excel ou CSV avec les colonnes CODE et LIBELLE (CHAPITRE facultatif) : les codes sont ajoutés, les libellés existants mis à jour, rien n’est supprimé.')}</p>
+        <Input type="file" accept=".xlsx,.csv,.txt" disabled={importFile.isPending} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) importFile.mutate(file) }} className="cursor-pointer pt-2.5" />
+      </CardContent>
+    </Card>
   )
 }

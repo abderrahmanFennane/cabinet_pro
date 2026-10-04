@@ -8,8 +8,10 @@ import Topbar from './Topbar'
 import { useAuth, useCabinetApi, useCabinetId, useTeam } from '../../lib/hooks'
 import api from '../../lib/api'
 import { pages } from '../../router/pages'
+import { useL } from '../../lib/labels'
 
 export default function AppLayout() {
+  const L = useL()
   const { user, hasPermissions } = useAuth()
   const queryClient = useQueryClient()
   const cabinetApi = useCabinetApi()
@@ -39,7 +41,7 @@ export default function AppLayout() {
         <Topbar />
         {user?.role === 'SUPER_ADMIN' && cabinetId && (
           <div className="flex items-center justify-center gap-2 border-b border-[#EEE7F8] bg-[#EEE7F8] px-4 py-2 text-center text-sm font-semibold text-[#6746A8]">
-            <ShieldCheck size={16} /> Vous consultez ce cabinet en tant que Super Admin. Chaque ouverture de dossier est journalisée et visible par le cabinet.
+            <ShieldCheck size={16} /> {L('Vous consultez ce cabinet en tant que Super Admin. Chaque ouverture de dossier est journalisée et visible par le cabinet.')}
           </div>
         )}
         {user?.role === 'OWNER' && user.cabinet?.subscriptionStatus === 'TRIALING' && user.cabinet.currentPeriodEnd && (() => {
@@ -53,7 +55,7 @@ export default function AppLayout() {
         })()}
         <main className="mx-auto w-full min-w-0 max-w-[1180px] overflow-x-hidden px-4 pb-[calc(96px+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 lg:px-8 lg:pb-16 lg:pt-7" key={location.pathname}>
           <SubNav />
-          <Suspense fallback={<div className="py-16 text-center text-sm text-[#5A6B65]">Chargement…</div>}>
+          <Suspense fallback={<div className="py-16 text-center text-sm text-[#5A6B65]">{L('Chargement…')}</div>}>
             <Outlet />
           </Suspense>
         </main>

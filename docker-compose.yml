@@ -25,11 +25,49 @@ services:
       PORT: 4000
       DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/cabinet_pro
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY}
+      MFA_REQUIRED: ${MFA_REQUIRED:-true}
       SEED_DATABASE: ${SEED_DATABASE:-false}
       APP_TIMEZONE: Africa/Casablanca
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      # Card payment of subscriptions (CMI). Production gateway: https://payment.cmi.co.ma/fim/est3Dgate
+      CMI_CLIENT_ID: ${CMI_CLIENT_ID:-}
+      CMI_STORE_KEY: ${CMI_STORE_KEY:-}
+      CMI_GATEWAY_URL: ${CMI_GATEWAY_URL:-https://testpayment.cmi.co.ma/fim/est3Dgate}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-}
+      # SMS (Infobip) and WhatsApp (Meta Cloud API). Empty = messages are logged, not sent.
+      INFOBIP_BASE_URL: ${INFOBIP_BASE_URL:-}
+      INFOBIP_API_KEY: ${INFOBIP_API_KEY:-}
+      INFOBIP_SMS_SENDER: ${INFOBIP_SMS_SENDER:-CabinetPro}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v20.0}
+      WHATSAPP_TEMPLATE_LANG: ${WHATSAPP_TEMPLATE_LANG:-fr}
+      WHATSAPP_TEMPLATE_APPOINTMENT: ${WHATSAPP_TEMPLATE_APPOINTMENT:-}
+      WHATSAPP_TEMPLATE_PLAN_EXPIRY: ${WHATSAPP_TEMPLATE_PLAN_EXPIRY:-}
+      WHATSAPP_TEMPLATE_OWNER_MESSAGE: ${WHATSAPP_TEMPLATE_OWNER_MESSAGE:-}
+      WHATSAPP_TEMPLATE_PAYMENT: ${WHATSAPP_TEMPLATE_PAYMENT:-}
+      WHATSAPP_TEMPLATE_DOCUMENT: ${WHATSAPP_TEMPLATE_DOCUMENT:-}
     volumes:
       - uploads:/app/uploads
       - private-uploads:/app/private-uploads
+
+  # Daily database dump + restore test (deploy/backup.sh). Copy ./backups off the server regularly.
+  backup:
+    image: mysql:8.4
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: cabinet_pro
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-1}
+    entrypoint: ["sh", "/scripts/backup.sh"]
+    volumes:
+      - ./deploy:/scripts:ro
+      - ./backups:/backups
 
   frontend:
     build:

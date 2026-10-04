@@ -6,6 +6,7 @@ import { AppError } from '../../middleware/error';
 import { sendSuccess } from '../../utils/response';
 import { toNumber } from '../../utils/patient-scope';
 import { COMMON_DRUGS } from '../../data/drugs';
+import { specialtyStats } from '../../services/specialty-stats';
 
 // Cabinet-level routes mounted at /api/cabinets/:cabinetId: team, dashboard, access log, support access,
 // prescription templates and drug search.
@@ -171,7 +172,152 @@ router.delete('/prescription-templates/:id', requirePermissions('MANAGE_PRESCRIP
   } catch (err) { next(err); }
 });
 
-router.get('/drugs', requirePermissions('MANAGE_PRESCRIPTIONS'), async (req: Request, res: Response, next: NextFunction) => {
+/**
+ * Key numbers of each specialty practised in the cabinet (a collaborator: their own specialty and patients only).
+ * The lists of patients behind an alert are given only to users who may read medical content.
+ */
+router.get('/specialty-stats', requirePermissions('VIEW_REPORTS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const cabinetId = req.params.cabinetId;
+    const own = req.user!.role === 'PRACTITIONER';
+    const specialties = own
+      ? [req.user!.specialty || 'GENERAL']
+      : [...new Set((await prisma.user.findMany({ where: { cabinetId, deletedAt: null, isActive: true, role: { in: ['OWNER', 'PRACTITIONER'] } }, select: { specialty: true } })).map(u => u.specialty || 'GENERAL'))];
+    const medical = (req.user!.permissions || []).includes('VIEW_MEDICAL');
+    const result = await Promise.all(specialties.map(async specialty => ({
+      specialty,
+      stats: (await specialtyStats(prisma as any, { cabinetId, practitionerId: own ? req.user!.id : undefined }, specialty))
+        .map(s => (medical ? s : { ...s, patients: undefined })),
+    })));
+    sendSuccess(res, result.filter(r => r.stats.length));
+  } catch (err) { next(err); }
+});
+
+/**
+ * First-steps guide for a new cabinet (owner only). Every step is checked from the data itself,
+ * so it ticks on its own as the clinic gets set up.
+ */
+router.get('/setup-guide', requirePermissions('MANAGE_SETTINGS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const cabinetId = req.params.cabinetId;
+    const cabinet = await prisma.cabinet.findUnique({ where: { id: cabinetId } });
+    if (!cabinet) throw new AppError('Cabinet introuvable', 404);
+    const afterSetup = new Date(cabinet.createdAt.getTime() + 5 * 60_000);
+    const [team, patients, appointments, actsEdited, me] = await Promise.all([
+      prisma.user.count({ where: { cabinetId, deletedAt: null } }),
+      prisma.patient.count({ where: { cabinetId, deletedAt: null } }),
+      prisma.appointment.count({ where: { cabinetId, deletedAt: null } }),
+      prisma.act.count({ where: { cabinetId, OR: [{ updatedAt: { gt: afterSetup } }, { createdAt: { gt: afterSetup } }] } }),
+      prisma.user.findUnique({ where: { id: req.user!.id }, select: { totpEnabledAt: true, inpe: true } }),
+    ]);
+    const steps = [
+      { key: 'profile', done: !!(cabinet.address && cabinet.phone), path: '/settings?tab=cabinet' },
+      { key: 'letterhead', done: !!(cabinet.letterhead && me?.inpe), path: '/settings?tab=cabinet' },
+      { key: 'acts', done: actsEdited > 0, path: '/settings?tab=acts' },
+      { key: 'team', done: team > 1, path: '/team' },
+      { key: 'patients', done: patients > 0, path: '/patients' },
+      { key: 'appointment', done: appointments > 0, path: '/agenda' },
+      { key: 'security', done: !!me?.totpEnabledAt || req.user!.role === 'SUPER_ADMIN', path: '/account' },
+    ];
+    sendSuccess(res, { hidden: !!cabinet.setupGuideHiddenAt, done: steps.filter(s => s.done).length, steps });
+  } catch (err) { next(err); }
+});
+
+router.post('/setup-guide/:action(hide|show)', requirePermissions('MANAGE_SETTINGS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await prisma.cabinet.update({ where: { id: req.params.cabinetId }, data: { setupGuideHiddenAt: req.params.action === 'hide' ? new Date() : null } });
+    sendSuccess(res, null);
+  } catch (err) { next(err); }
+});
+
+// ─── ICD-10 coding of the diagnosis ───
+
+router.get('/diagnosis-codes', requirePermissions('MANAGE_CONSULTATIONS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const search = String(req.query.search || '').trim();
+    if (search.length < 2) { sendSuccess(res, []); return; }
+    const code = search.toUpperCase().replace(/\s/g, '');
+    // Word stems ("lombaire" -> "lomba", "dépression" -> "dépre") so that "douleur lombaire" finds "Lombalgie"
+    // and "dépression" finds "Épisode dépressif". The database collation ignores accents and case.
+    const plain = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    // Everyday words doctors type quickly
+    const SYNONYMS: [RegExp, string][] = [
+      [/mal de dos|dos/, 'lombalgie dorsalgie'], [/rhume/, 'rhinopharyngite'], [/tension|hta/, 'hypertension'],
+      [/sucre/, 'diabete'], [/crise cardiaque/, 'infarctus'], [/gorge/, 'pharyngite amygdalite'], [/ventre/, 'abdominale'],
+      [/depression|deprime/, 'depressif'], [/stress|angoisse/, 'anxiete'], [/cholesterol/, 'hypercholesterolemie'],
+      [/regles/, 'menorragies dysmenorrhee'], [/grossesse|enceinte/, 'grossesse'], [/vaccin/, 'vaccination'], [/certificat/, 'certificat'],
+    ];
+    const query = plain(search) + ' ' + SYNONYMS.filter(([re]) => re.test(plain(search))).map(([, s]) => s).join(' ');
+    const STOP = ['des', 'les', 'une', 'avec', 'sans', 'mal', 'dos'];
+    const stems = [...new Set(query.split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOP.includes(w)).map(w => w.slice(0, 5)))];
+    const codes = await prisma.diagnosisCode.findMany({
+      where: { OR: [...(/^[A-Z][0-9]/.test(code) ? [{ code: { startsWith: code } }] : []), ...stems.map(w => ({ label: { contains: w } }))] },
+      orderBy: { code: 'asc' }, take: 300,
+    });
+    // Code match first, then labels with the most stems
+    const score = (c: { code: string; label: string }) => (c.code.startsWith(code) ? 100 : 0) + stems.filter(w => plain(c.label).includes(w)).length;
+    sendSuccess(res, codes.sort((a, b) => score(b) - score(a)).slice(0, 15));
+  } catch (err) { next(err); }
+});
+
+// ─── Consultation templates (personal, or shared with the cabinet) ───
+
+const templateSchema = z.object({
+  name: z.string().trim().min(1, 'Nom requis').max(80),
+  shared: z.boolean().optional(),
+  reason: z.string().nullable().optional(),
+  examination: z.string().nullable().optional(),
+  diagnosis: z.string().nullable().optional(),
+  diagnosisCode: z.string().trim().max(10).nullable().optional(),
+  plan: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+async function ownTemplate(req: Request) {
+  const template = await prisma.consultationTemplate.findFirst({ where: { id: req.params.id, cabinetId: req.params.cabinetId } });
+  if (!template) throw new AppError('Modèle introuvable', 404);
+  // A shared template is managed by its author or the owner; a personal one by its author only.
+  if (template.userId ? template.userId !== req.user!.id : req.user!.role !== 'OWNER' && req.user!.role !== 'SUPER_ADMIN') {
+    throw new AppError('Seul l’auteur (ou le titulaire pour un modèle partagé) peut le modifier', 403);
+  }
+  return template;
+}
+
+router.get('/consultation-templates', requirePermissions('MANAGE_CONSULTATIONS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const templates = await prisma.consultationTemplate.findMany({
+      where: { cabinetId: req.params.cabinetId, OR: [{ userId: null }, { userId: req.user!.id }] },
+      orderBy: { name: 'asc' },
+    });
+    sendSuccess(res, templates.map(({ userId, ...t }) => ({ ...t, shared: !userId, mine: userId === req.user!.id })));
+  } catch (err) { next(err); }
+});
+
+router.post('/consultation-templates', requirePermissions('MANAGE_CONSULTATIONS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { shared, ...data } = templateSchema.parse(req.body);
+    const template = await prisma.consultationTemplate.create({ data: { ...data, cabinetId: req.params.cabinetId, userId: shared ? null : req.user!.id } });
+    sendSuccess(res, template, 'Modèle enregistré', undefined, 201);
+  } catch (err) { next(err); }
+});
+
+router.patch('/consultation-templates/:id', requirePermissions('MANAGE_CONSULTATIONS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const template = await ownTemplate(req);
+    const { shared: _shared, ...data } = templateSchema.partial().parse(req.body);
+    sendSuccess(res, await prisma.consultationTemplate.update({ where: { id: template.id }, data }), 'Modèle mis à jour');
+  } catch (err) { next(err); }
+});
+
+router.delete('/consultation-templates/:id', requirePermissions('MANAGE_CONSULTATIONS'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const template = await ownTemplate(req);
+    await prisma.consultationTemplate.delete({ where: { id: template.id } });
+    sendSuccess(res, null, 'Modèle supprimé');
+  } catch (err) { next(err); }
+});
+
+router.get('/drugs',requirePermissions('MANAGE_PRESCRIPTIONS'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const search = String(req.query.search || '').trim().toLowerCase();
     const recent = await prisma.prescription.findMany({ where: { cabinetId: req.params.cabinetId }, select: { items: true }, orderBy: { date: 'desc' }, take: 200 });
@@ -179,8 +325,21 @@ router.get('/drugs', requirePermissions('MANAGE_PRESCRIPTIONS'), async (req: Req
     for (const p of recent) {
       try { for (const item of JSON.parse(p.items)) if (item?.drug) used.add(item.drug); } catch { /* ignore malformed rows */ }
     }
-    const names = [...new Set([...used, ...COMMON_DRUGS.map(d => d.name)])];
-    sendSuccess(res, names.filter(name => !search || name.toLowerCase().includes(search)).slice(0, 20));
+    // The cabinet's own recent medicines first, then the national list (name or generic name).
+    const mine = [...used].filter(name => !search || name.toLowerCase().includes(search)).slice(0, 8)
+      .map(name => ({ name, detail: 'Déjà prescrit au cabinet' }));
+    const national = search.length < 2
+      ? COMMON_DRUGS.filter(d => !used.has(d.name)).slice(0, 12).map(d => ({ name: d.name, detail: d.form }))
+      : (await prisma.drug.findMany({
+        where: { isActive: true, OR: [{ name: { contains: search } }, { dci: { contains: search } }] },
+        orderBy: [{ name: 'asc' }], take: 40,
+        select: { name: true, dci: true, form: true, presentation: true, ppv: true, refundRate: true, generic: true },
+      })).map(d => ({
+        name: `${d.name}${d.form ? `, ${d.form}` : ''}`,
+        detail: [d.dci, d.presentation, d.ppv ? `${Number(d.ppv).toFixed(2)} DH` : null, d.refundRate ? `remb. ${d.refundRate} %` : null, d.generic ? 'générique' : null].filter(Boolean).join(' · '),
+      }));
+    const seen = new Set<string>();
+    sendSuccess(res, [...mine, ...national].filter(d => !seen.has(d.name) && seen.add(d.name)).slice(0, 25));
   } catch (err) { next(err); }
 });
 

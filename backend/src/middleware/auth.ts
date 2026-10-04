@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../utils/auth';
+import { verifyToken, SessionPayload } from '../utils/auth';
 import { prisma } from '../config/prisma';
 import { writeAuditLog } from '../utils/audit';
 import { canAccessCabinet, effectivePermissions, parsePermissionList } from '../utils/tenant-access';
@@ -50,14 +50,24 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       return;
     }
 
-    const payload = verifyToken(token) as JwtPayload;
+    const payload = verifyToken(token) as SessionPayload;
+    // The half-way token of the two-step login only opens /auth/mfa/*.
+    if (payload.purpose === 'mfa') {
+      res.status(401).json({ error: 'Code de vérification requis' });
+      return;
+    }
     const user = await prisma.user.findFirst({
       where: { id: payload.userId, deletedAt: null },
       select: {
-        id: true, email: true, role: true, cabinetId: true, isActive: true, specialty: true, seesAllPatients: true,
+        id: true, email: true, role: true, cabinetId: true, isActive: true, specialty: true, seesAllPatients: true, tokenVersion: true,
         cabinet: { select: { isActive: true, deletedAt: true, currentPeriodEnd: true, trialEndsAt: true, subscriptionStatus: true, plan: true } },
       },
     });
+    // Password changed, account deactivated or "sign out everywhere": older tokens stop working.
+    if (user && (payload.tv ?? 0) !== user.tokenVersion) {
+      res.status(401).json({ error: 'Session expirée, reconnectez-vous', code: 'SESSION_REVOKED' });
+      return;
+    }
 
     const cabinet = user?.cabinet;
     const subscriptionExpired = !!(cabinet?.currentPeriodEnd && cabinet.currentPeriodEnd <= new Date());

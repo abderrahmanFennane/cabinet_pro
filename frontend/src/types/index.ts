@@ -38,6 +38,10 @@ export interface User {
   } | null
   permissions?: PermissionKey[]
   blocked?: BlockedReason | null
+  /** Two-step login: on /auth/me for the signed-in user. */
+  mfa?: { enabled: boolean; required: boolean; recoveryCodesLeft: number }
+  /** Two-step login set up (team lists). */
+  mfaEnabled?: boolean
   isActive?: boolean
   createdAt?: string
 }
@@ -222,6 +226,8 @@ export interface Appointment {
   date: string
   durationMinutes: number
   type: string
+  /** Same id on every occurrence of a recurring appointment */
+  seriesId?: string | null
   reason: string | null
   status: AppointmentStatus
   walkIn: boolean
@@ -255,6 +261,8 @@ export interface Consultation {
   examination: string | null
   vitals: Vitals | null
   diagnosis: string | null
+  /** ICD-10 (CIM-10) code */
+  diagnosisCode?: string | null
   plan: string | null
   notes: string | null
   status: 'DRAFT' | 'LOCKED'
@@ -280,7 +288,7 @@ export interface Prescription {
   practitioner: TeamMember
 }
 
-export type DocumentType = 'CERTIFICATE' | 'SICK_LEAVE' | 'REFERRAL' | 'EXAM_REQUEST' | 'OTHER'
+export type DocumentType = 'CERTIFICATE' | 'SICK_LEAVE' | 'REFERRAL' | 'EXAM_REQUEST' | 'PHYSIO_PRESCRIPTION' | 'PREGNANCY_DECLARATION' | 'OTHER'
 
 export interface MedicalDocument {
   id: string

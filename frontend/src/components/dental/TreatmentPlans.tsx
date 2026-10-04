@@ -14,6 +14,7 @@ import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { QuoteDialog, quoteTone } from '../billing/BillingDetails'
+import { useL } from '../../lib/labels'
 
 type Props = {
   base: string
@@ -28,6 +29,7 @@ const planTone = (status: TreatmentPlan['status']) => (status === 'DONE' ? 'succ
 
 /** F-DEN-06/07: plans with ordered sessions, acts to perform, and a quote generated from the plan. */
 export default function TreatmentPlans({ base, cabinetApi, patientId, plans, currency, onAddAct }: Props) {
+  const L = useL()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
@@ -40,7 +42,7 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
   const create = useMutation({
     mutationFn: () => api.post(`${base}/plans`, { title, notes: notes || null }),
     onSuccess: (res) => {
-      toast.success('Plan créé : ajoutez-y des actes')
+      toast.success(L('Plan créé : ajoutez-y des actes'))
       setCreating(false); setTitle(''); setNotes('')
       refresh()
       onAddAct(res.data.data.id)
@@ -49,33 +51,33 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
   })
   const perform = useMutation({
     mutationFn: (actId: string) => api.post(`${base}/acts/${actId}/perform`),
-    onSuccess: () => { toast.success('Acte réalisé'); refresh() },
+    onSuccess: () => { toast.success(L('Acte réalisé')); refresh() },
     onError: (err) => toast.error(apiError(err)),
   })
   const removeAct = useMutation({
     mutationFn: (actId: string) => api.delete(`${base}/acts/${actId}`),
-    onSuccess: () => { toast.success('Acte retiré du plan'); refresh() },
+    onSuccess: () => { toast.success(L('Acte retiré du plan')); refresh() },
     onError: (err) => toast.error(apiError(err)),
   })
   const makeQuote = useMutation({
     mutationFn: (planId: string) => api.post(`${base}/plans/${planId}/quote`, {}),
-    onSuccess: (res) => { toast.success('Devis créé à partir du plan'); refresh(); setQuoteId(res.data.data.id) },
+    onSuccess: (res) => { toast.success(L('Devis créé à partir du plan')); refresh(); setQuoteId(res.data.data.id) },
     onError: (err) => toast.error(apiError(err)),
   })
   const cancelPlan = useMutation({
     mutationFn: (planId: string) => api.patch(`${base}/plans/${planId}`, { status: 'CANCELLED' }),
-    onSuccess: () => { toast.success('Plan annulé'); refresh() },
+    onSuccess: () => { toast.success(L('Plan annulé')); refresh() },
     onError: (err) => toast.error(apiError(err)),
   })
 
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-bold">Plans de traitement</h3>
-        <Button size="sm" variant="outline" onClick={() => setCreating(true)}><Plus size={16} className="me-1" />Nouveau plan</Button>
+        <h3 className="text-lg font-bold">{L('Plans de traitement')}</h3>
+        <Button size="sm" variant="outline" onClick={() => setCreating(true)}><Plus size={16} className="me-1" />{L('Nouveau plan')}</Button>
       </div>
 
-      {plans.length === 0 && <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">Aucun plan de traitement. Créez-en un pour organiser les séances et générer un devis.</p>}
+      {plans.length === 0 && <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{L('Aucun plan de traitement. Créez-en un pour organiser les séances et générer un devis.')}</p>}
 
       {plans.map(plan => {
         const sessions = [...new Set(plan.acts.map(a => a.session ?? 0))].sort((a, b) => a - b)
@@ -85,7 +87,7 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
             <header className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h4 className="font-semibold">{plan.title}</h4>
-                <p className="text-xs text-muted-foreground">{plan.done}/{plan.acts.length} actes réalisés · {formatCurrency(plan.total, currency)}</p>
+                <p className="text-xs text-muted-foreground">{plan.done}/{plan.acts.length} {L('actes réalisés')} · {formatCurrency(plan.total, currency)}</p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge variant={planTone(plan.status)}>{t(`planStatus.${plan.status}`)}</Badge>
@@ -96,7 +98,7 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
 
             {sessions.map(session => (
               <div key={session} className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{session ? `Séance ${session}` : 'Sans séance'}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{session ? `${L('Séance')} ${session}` : L('Sans séance')}</p>
                 {plan.acts.filter(a => (a.session ?? 0) === session).map(act => (
                   <div key={act.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/60 p-2.5 text-sm">
                     <div className="min-w-0">
@@ -104,11 +106,11 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
                       <p className="text-xs text-muted-foreground">{formatCurrency(act.price, currency)}</p>
                     </div>
                     {act.status === 'DONE' ? (
-                      <Badge variant="success">Réalisé</Badge>
+                      <Badge variant="success">{L('Réalisé')}</Badge>
                     ) : editable && (
                       <div className="flex gap-1">
-                        <Button size="sm" variant="secondary" onClick={() => perform.mutate(act.id)} disabled={perform.isPending}><CheckCircle2 size={15} className="me-1" />Réaliser</Button>
-                        {!plan.quote && <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Retirer l’acte" onClick={() => removeAct.mutate(act.id)}><Trash2 size={15} /></Button>}
+                        <Button size="sm" variant="secondary" onClick={() => perform.mutate(act.id)} disabled={perform.isPending}><CheckCircle2 size={15} className="me-1" />{L('Réaliser')}</Button>
+                        {!plan.quote && <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={L('Retirer l’acte')} onClick={() => removeAct.mutate(act.id)}><Trash2 size={15} /></Button>}
                       </div>
                     )}
                   </div>
@@ -117,11 +119,11 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
             ))}
 
             <footer className="flex flex-wrap gap-2 border-t border-border pt-3">
-              {editable && !plan.quote && <Button size="sm" variant="outline" onClick={() => onAddAct(plan.id)}><Plus size={15} className="me-1" />Ajouter un acte</Button>}
+              {editable && !plan.quote && <Button size="sm" variant="outline" onClick={() => onAddAct(plan.id)}><Plus size={15} className="me-1" />{L('Ajouter un acte')}</Button>}
               {plan.quote
-                ? <Button size="sm" onClick={() => setQuoteId(plan.quote!.id)}><FileText size={15} className="me-1" />Voir le devis</Button>
-                : editable && plan.acts.length > 0 && <Button size="sm" onClick={() => makeQuote.mutate(plan.id)} disabled={makeQuote.isPending}><FileText size={15} className="me-1" />Générer le devis</Button>}
-              {editable && plan.done === 0 && <Button size="sm" variant="ghost" onClick={() => cancelPlan.mutate(plan.id)}>Annuler le plan</Button>}
+                ? <Button size="sm" onClick={() => setQuoteId(plan.quote!.id)}><FileText size={15} className="me-1" />{L('Voir le devis')}</Button>
+                : editable && plan.acts.length > 0 && <Button size="sm" onClick={() => makeQuote.mutate(plan.id)} disabled={makeQuote.isPending}><FileText size={15} className="me-1" />{L('Générer le devis')}</Button>}
+              {editable && plan.done === 0 && <Button size="sm" variant="ghost" onClick={() => cancelPlan.mutate(plan.id)}>{L('Annuler le plan')}</Button>}
             </footer>
           </article>
         )
@@ -129,11 +131,11 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
 
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nouveau plan de traitement</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{L('Nouveau plan de traitement')}</DialogTitle></DialogHeader>
           <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (title.trim()) create.mutate() }}>
-            <div className="space-y-1.5"><Label htmlFor="plan-title">Titre</Label><Input id="plan-title" value={title} onChange={e => setTitle(e.target.value)} placeholder="ex. Réhabilitation secteur 3" autoFocus /></div>
-            <div className="space-y-1.5"><Label htmlFor="plan-notes">Notes</Label><Textarea id="plan-notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></div>
-            <Button type="submit" className="w-full" disabled={!title.trim() || create.isPending}>Créer et ajouter des actes</Button>
+            <div className="space-y-1.5"><Label htmlFor="plan-title">{L('Titre')}</Label><Input id="plan-title" value={title} onChange={e => setTitle(e.target.value)} placeholder={L('ex. Réhabilitation secteur 3')} autoFocus /></div>
+            <div className="space-y-1.5"><Label htmlFor="plan-notes">{L('Notes')}</Label><Textarea id="plan-notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></div>
+            <Button type="submit" className="w-full" disabled={!title.trim() || create.isPending}>{L('Créer et ajouter des actes')}</Button>
           </form>
         </DialogContent>
       </Dialog>

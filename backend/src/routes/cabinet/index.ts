@@ -8,6 +8,7 @@ import recordsRoutes from './records.routes';
 import appointmentsRoutes from './appointments.routes';
 import actsRoutes, { billingRouter } from './billing.routes';
 import workspaceRoutes from './workspace.routes';
+import { cabinetShares } from '../share.routes';
 
 // Every cabinet data route: /api/cabinets/:cabinetId/...
 const router = Router({ mergeParams: true });
@@ -16,6 +17,7 @@ router.use(authenticate, requireCabinetAccess);
 router.use('/patients/:patientId/dental', dentalRoutes);
 router.use('/patients/:patientId/attachments', attachmentsRoutes);
 router.use('/patients/:patientId/records', recordsRoutes);
+router.use('/patients/:patientId/shares', cabinetShares);
 router.use('/patients/:patientId', medicalRoutes);
 router.use('/patients', patientsRoutes);
 router.use('/appointments', appointmentsRoutes);

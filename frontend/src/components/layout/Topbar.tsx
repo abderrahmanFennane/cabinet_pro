@@ -6,6 +6,7 @@ import {
   LogOut,
   Building2,
   ChevronDown,
+  UserRound,
 } from 'lucide-react'
 import { useAuth, useCabinetId } from '../../lib/hooks'
 import { Button } from '../ui/button'
@@ -128,6 +129,10 @@ export default function Topbar() {
                     {user.firstName} {user.lastName}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/account')} className="cursor-pointer">
+                    <UserRound size={16} className="me-2" />
+                    {t('account.menu')}
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleLogout}
                     className="text-red-700 focus:text-red-700 cursor-pointer focus:bg-red-600/10"

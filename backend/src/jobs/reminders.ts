@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { channelsFor, createInboxMessage, formatDate, formatTime, MessageChannel, sendMessage } from '../services/messaging';
+import { channelsFor, createInboxMessage, formatDate, formatTime, MessageChannel, sendMessage, monthlyUsage } from '../services/messaging';
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
@@ -7,10 +7,6 @@ const DAY = 24 * 60 * MINUTE;
 const parseLeads = (value: string | null | undefined) => String(value || '1440,60').split(',').map(Number).filter(n => Number.isFinite(n) && n > 0);
 
 /** Messages sent this calendar month by a cabinet to its patients (counts against the plan quota). */
-async function monthlyUsage(cabinetId: string, now: Date) {
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  return prisma.message.count({ where: { cabinetId, kind: 'APPOINTMENT_REMINDER', channel: { in: ['SMS', 'WHATSAPP'] }, status: { in: ['SENT', 'LOGGED'] }, createdAt: { gte: monthStart } } });
-}
 
 /**
  * Reminds patients of their appointment at each lead time of the cabinet (default: the day before and one hour before).

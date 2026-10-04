@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Check, Mail, MessageCircle, Phone, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +11,7 @@ import { PermissionKey } from '../types/permissions'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
 import { whatsappLink } from './SubscriptionBlocked'
+import { postToGateway } from '../lib/gateway'
 
 type Plan = {
   id: string
@@ -31,6 +33,8 @@ const FEATURES: [PermissionKey, string][] = [['DENTAL_TREATMENT_PLAN', 'sub.trea
 
 /** The owner's subscription: current plan and usage, then the other plans. */
 export default function Plans() {
+  const [searchParams] = useSearchParams()
+  const returned = searchParams.get('billing')
   const { t } = useTranslation()
   const { user } = useAuth()
   const [contactFor, setContactFor] = useState<Plan | null>(null)
@@ -56,7 +60,7 @@ export default function Plans() {
   // Online payment when it is configured; otherwise the contact panel below.
   const checkout = useMutation({
     mutationFn: async (plan: Plan) => (await api.post('/billing/checkout', { planCode: plan.code })).data.data,
-    onSuccess: (data) => { if (data?.checkoutUrl) window.location.href = data.checkoutUrl },
+    onSuccess: (data: any) => { if (data?.gateway) postToGateway(data.gateway) },
     onError: (_err, plan) => setContactFor(plan),
   })
 
@@ -76,6 +80,8 @@ export default function Plans() {
   return (
     <div className="grid gap-6">
       <PageHeader title={t('sub.title')} subtitle={t('sub.subtitle')} />
+      {returned === 'success' && <p role="status" className="rounded-xl bg-[#DCEEE7] px-4 py-3 text-sm font-semibold text-primary">{t('cmi.success')}</p>}
+      {returned === 'failed' && <p role="alert" className="rounded-xl bg-[#FBE3E0] px-4 py-3 text-sm font-semibold text-[#B8372C]">{t('cmi.failed')}</p>}
 
       {current && cabinet && (
         <section className="grid gap-5 rounded-[14px] border border-[#D8E1DD] bg-white p-[18px] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

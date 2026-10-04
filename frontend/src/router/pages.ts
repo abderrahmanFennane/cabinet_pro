@@ -20,4 +20,9 @@ export const pages = {
   InvoicesAdmin: () => import('../pages/InvoicesAdmin'),
   Print: () => import('../pages/Print'),
   CareSheet: () => import('../pages/CareSheet'),
+  Account: () => import('../pages/Account'),
+  SharedDocument: () => import('../pages/SharedDocument'),
+  PatientFilePrint: () => import('../pages/PatientFilePrint'),
+  ChildBooklet: () => import('../pages/ChildBooklet'),
+  PlatformHome: () => import('../pages/PlatformHome'),
 }

@@ -1,8 +1,10 @@
-import { randomInt } from 'crypto';
+import { createHash, randomBytes, randomInt } from 'crypto';
+import { authenticator } from 'otplib';
+import QRCode from 'qrcode';
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/prisma';
-import { comparePassword, generateToken, hashPassword } from '../utils/auth';
+import { comparePassword, hashPassword, mfaRequiredFor, mfaToken, readMfaToken, sessionToken } from '../utils/auth';
 import { rateLimit } from '../utils/rate-limit';
 import { createInboxMessage, sendMessage } from '../services/messaging';
 import { copyDefaultActs, planQuotas } from '../services/cabinet-setup';
@@ -86,7 +88,7 @@ router.post('/register', registerLimiter, async (req: Request, res: Response, ne
     });
     void writeAuditLog({ userId: user.id, cabinetId: cabinet.id, action: 'REGISTER_TRIAL', method: req.method, path: req.originalUrl, status: 201 });
 
-    const token = generateToken({ userId: user.id, role: user.role, cabinetId: cabinet.id });
+    const token = sessionToken({ ...user, cabinetId: cabinet.id });
     sendSuccess(res, { token, user: publicUser(user) }, 'Essai gratuit activé', undefined, 201);
   } catch (err) {
     next(err);
@@ -96,7 +98,7 @@ router.post('/register', registerLimiter, async (req: Request, res: Response, ne
 router.post('/login', loginLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
-    const user = await prisma.user.findFirst({ where: { email: email.toLowerCase(), deletedAt: null } });
+    const user = await prisma.user.findFirst({ where: { email: email.toLowerCase(), deletedAt: null }, include: { cabinet: { select: { isDemo: true } } } });
 
     if (!user || !(await comparePassword(password, user.password))) {
       void writeAuditLog({ action: 'LOGIN_FAILURE', method: req.method, path: req.originalUrl, status: 401 });
@@ -108,12 +110,92 @@ router.post('/login', loginLimiter, async (req: Request, res: Response, next: Ne
     // Blocked cabinets (trial ended, plan expired, suspended) can still sign in:
     // the app then shows the renewal / contact page instead of the workspace.
 
-    const token = generateToken({ userId: user.id, role: user.role, cabinetId: user.cabinetId });
+    // Second step: a code from the authenticator app, or its first-time setup.
+    if (mfaRequiredFor(user)) {
+      sendSuccess(res, { mfa: user.totpEnabledAt ? 'VERIFY' : 'SETUP', mfaToken: mfaToken(user) }, 'Code de vérification requis');
+      return;
+    }
+
+    const token = sessionToken(user);
     void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'LOGIN_SUCCESS', method: req.method, path: req.originalUrl, status: 200 });
     sendSuccess(res, { token, user: publicUser(user) }, 'Connexion réussie');
   } catch (err) {
     next(err);
   }
+});
+
+// ─── Two-step login (TOTP authenticator app) ───
+
+const mfaLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Trop de tentatives. Réessayez dans quelques minutes.' });
+authenticator.options = { window: 1 }; // accepts the previous and next 30-second code (clock drift)
+const hashCode = (code: string) => createHash('sha256').update(code.replace(/[^A-Z0-9]/gi, '').toUpperCase()).digest('hex');
+const newRecoveryCodes = () => Array.from({ length: 8 }, () => {
+  const raw = randomBytes(5).toString('hex').toUpperCase(); // 10 characters
+  return `${raw.slice(0, 5)}-${raw.slice(5)}`;
+});
+
+async function userFromMfaToken(token: string) {
+  let payload;
+  try { payload = readMfaToken(token); } catch { throw new AppError('Étape expirée : reconnectez-vous avec votre mot de passe.', 401); }
+  const user = await prisma.user.findFirst({ where: { id: payload.userId, deletedAt: null, isActive: true } });
+  if (!user || (payload.tv ?? 0) !== user.tokenVersion) throw new AppError('Étape expirée : reconnectez-vous avec votre mot de passe.', 401);
+  return user;
+}
+
+/** First time: a secret to add in Google Authenticator / Microsoft Authenticator (QR code or text). */
+router.post('/mfa/setup', mfaLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { mfaToken: token } = z.object({ mfaToken: z.string().min(10) }).parse(req.body);
+    const user = await userFromMfaToken(token);
+    if (user.totpEnabledAt) throw new AppError('La double authentification est déjà activée.', 400);
+    const secret = authenticator.generateSecret();
+    await prisma.user.update({ where: { id: user.id }, data: { totpSecret: secret } });
+    const uri = authenticator.keyuri(user.email, 'Cabinet Pro', secret);
+    sendSuccess(res, { qr: await QRCode.toDataURL(uri, { margin: 1, width: 220 }), secret });
+  } catch (err) { next(err); }
+});
+
+/** Checks the code (or a recovery code) and opens the session. Confirms the setup the first time. */
+router.post('/mfa/verify', mfaLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const body = z.object({ mfaToken: z.string().min(10), code: z.string().trim().optional(), recoveryCode: z.string().trim().optional() }).parse(req.body);
+    const user = await userFromMfaToken(body.mfaToken);
+    if (!user.totpSecret) throw new AppError('Configurez d’abord l’application d’authentification.', 400);
+    let recoveryCodes: string[] | undefined;
+    let remaining: number | undefined;
+
+    if (body.recoveryCode && user.totpEnabledAt) {
+      const hashes: string[] = JSON.parse(user.recoveryCodes || '[]');
+      const index = hashes.indexOf(hashCode(body.recoveryCode));
+      if (index < 0) throw new AppError('Code de secours invalide ou déjà utilisé.', 400);
+      hashes.splice(index, 1);
+      await prisma.user.update({ where: { id: user.id }, data: { recoveryCodes: JSON.stringify(hashes) } });
+      remaining = hashes.length;
+    } else {
+      if (!body.code || !authenticator.check(body.code.replace(/\s/g, ''), user.totpSecret)) {
+        void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'MFA_FAILURE', method: req.method, path: req.originalUrl, status: 400 });
+        throw new AppError('Code incorrect. Saisissez le code à 6 chiffres affiché par l’application.', 400);
+      }
+      if (!user.totpEnabledAt) {
+        // Setup confirmed: recovery codes are shown once, only their hashes are kept.
+        recoveryCodes = newRecoveryCodes();
+        await prisma.user.update({ where: { id: user.id }, data: { totpEnabledAt: new Date(), recoveryCodes: JSON.stringify(recoveryCodes.map(hashCode)) } });
+        void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'MFA_ENABLED', method: req.method, path: req.originalUrl, status: 200 });
+      }
+    }
+
+    void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'LOGIN_SUCCESS', method: req.method, path: req.originalUrl, status: 200 });
+    sendSuccess(res, { token: sessionToken(user), user: publicUser(user), recoveryCodes, remainingRecoveryCodes: remaining }, 'Connexion réussie');
+  } catch (err) { next(err); }
+});
+
+/** Signs this account out of every device (all existing tokens stop working). */
+router.post('/logout-all', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await prisma.user.update({ where: { id: req.user!.id }, data: { tokenVersion: { increment: 1 } } });
+    void writeAuditLog({ userId: req.user!.id, cabinetId: req.user!.cabinetId, action: 'LOGOUT_ALL', method: req.method, path: req.originalUrl, status: 200 });
+    sendSuccess(res, null, 'Déconnecté de tous les appareils');
+  } catch (err) { next(err); }
 });
 
 const RESET_CODE_MINUTES = 15;
@@ -168,7 +250,7 @@ router.post('/reset-password', resetLimiter, async (req: Request, res: Response,
       throw invalid;
     }
     await prisma.$transaction([
-      prisma.user.update({ where: { id: user.id }, data: { password: await hashPassword(data.password) } }),
+      prisma.user.update({ where: { id: user.id }, data: { password: await hashPassword(data.password), tokenVersion: { increment: 1 } } }),
       prisma.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
     ]);
     void writeAuditLog({ userId: user.id, cabinetId: user.cabinetId, action: 'PASSWORD_RESET', method: req.method, path: req.originalUrl, status: 200 });
@@ -203,10 +285,32 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
       cabinet: user.cabinet,
       permissions: req.user!.permissions || [],
       blocked: req.user!.blocked || null,
+      mfa: {
+        enabled: !!user.totpEnabledAt,
+        required: mfaRequiredFor(user),
+        recoveryCodesLeft: user.recoveryCodes ? (JSON.parse(user.recoveryCodes) as string[]).length : 0,
+      },
     });
   } catch (err) {
     next(err);
   }
+});
+
+/** Own password change: needs the current one, signs every other device out, keeps this one with a fresh token. */
+router.post('/change-password', authenticate, mfaLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = z.object({
+      currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
+      password: z.string().min(8, 'Mot de passe : 8 caractères minimum'),
+    }).parse(req.body);
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user || !(await comparePassword(data.currentPassword, user.password))) throw new AppError('Mot de passe actuel incorrect', 400);
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { password: await hashPassword(data.password), tokenVersion: { increment: 1 } },
+    });
+    sendSuccess(res, { token: sessionToken(updated) }, 'Mot de passe modifié. Les autres appareils sont déconnectés.');
+  } catch (err) { next(err); }
 });
 
 export default router;

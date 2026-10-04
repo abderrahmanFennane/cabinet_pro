@@ -13,10 +13,12 @@ import Odontogram, { OdontogramLegend } from './Odontogram'
 import ToothSheet from './ToothSheet'
 import ActDialog from './ActDialog'
 import TreatmentPlans from './TreatmentPlans'
+import { useL } from '../../lib/labels'
 
 const DENTITIONS: Dentition[] = ['PRIMARY', 'MIXED', 'PERMANENT']
 
 export default function DentalTab({ patient, currency }: { patient: Patient; currency: string }) {
+  const L = useL()
   const { t } = useTranslation()
   const { hasPermissions } = useAuth()
   const cabinetId = useCabinetId()
@@ -62,7 +64,7 @@ export default function DentalTab({ patient, currency }: { patient: Patient; cur
     setActOpen(true)
   }
 
-  if (!chart) return <p className="py-8 text-center text-sm text-muted-foreground">Chargement du schéma dentaire…</p>
+  if (!chart) return <p className="py-8 text-center text-sm text-muted-foreground">{L('Chargement du schéma dentaire…')}</p>
 
   const sheet = sheetTooth !== null && (
     <ToothSheet
@@ -83,14 +85,14 @@ export default function DentalTab({ patient, currency }: { patient: Patient; cur
         <section className="min-w-0 space-y-4 rounded-[14px] border border-[#D8E1DD] bg-white p-4 sm:p-[18px]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-[1.08rem] font-bold">Touchez une dent pour la mettre à jour</h3>
+              <h3 className="text-[1.08rem] font-bold">{L('Touchez une dent pour la mettre à jour')}</h3>
               <p className="text-xs text-muted-foreground">
                 Denture {t(`dentition.${chart.dentition}`).toLowerCase()} · {chart.teeth.length} dents
-                {chart.forced ? ' · vue choisie manuellement' : ` · selon l’âge${patient.age !== null ? ` (${patient.age} ans)` : ''}`}
+                {chart.forced ? L(' · vue choisie manuellement') : ` · ${L('selon l’âge')}${patient.age !== null ? ` (${patient.age} ${L('ans')})` : ''}`}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div role="group" aria-label="Denture affichée" className="flex gap-1 rounded-xl bg-muted p-1">
+              <div role="group" aria-label={L('Denture affichée')} className="flex gap-1 rounded-xl bg-muted p-1">
                 {DENTITIONS.map(d => (
                   <button key={d} type="button" aria-pressed={chart.dentition === d} onClick={() => setDentition.mutate(d === chart.autoDentition ? null : d)}
                     className={cn('h-8 rounded-lg px-2.5 text-xs font-semibold', chart.dentition === d ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground')}>
@@ -99,7 +101,7 @@ export default function DentalTab({ patient, currency }: { patient: Patient; cur
                 ))}
               </div>
               {chart.forced && (
-                <Button size="sm" variant="ghost" onClick={() => setDentition.mutate(null)} title="Revenir à la denture selon l’âge"><RotateCcw size={15} /></Button>
+                <Button size="sm" variant="ghost" onClick={() => setDentition.mutate(null)} title={L('Revenir à la denture selon l’âge')}><RotateCcw size={15} /></Button>
               )}
             </div>
           </div>
@@ -108,16 +110,16 @@ export default function DentalTab({ patient, currency }: { patient: Patient; cur
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
             <p className="text-xs text-muted-foreground">
-              {selected.length > 1 ? `${selected.length} dents sélectionnées : ${selected.join(', ')}` : 'Touchez une dent pour ouvrir sa fiche. Maj ou Ctrl + clic pour en sélectionner plusieurs.'}
+              {selected.length > 1 ? `${selected.length} ${L('dents sélectionnées')} : ${selected.join(', ')}` : L('Touchez une dent pour ouvrir sa fiche. Maj ou Ctrl + clic pour en sélectionner plusieurs.')}
             </p>
-            <Button size="sm" onClick={() => openAct()}><Plus size={16} className="me-1" />Ajouter un acte</Button>
+            <Button size="sm" onClick={() => openAct()}><Plus size={16} className="me-1" />{L('Ajouter un acte')}</Button>
           </div>
           <OdontogramLegend />
         </section>
 
         {/* Desktop/tablet: side panel keeps the chart visible while editing (spec 6.3) */}
         <aside className="hidden rounded-[14px] border border-[#D8E1DD] bg-white p-5 lg:block">
-          {(isDesktop && sheet) || <p className="py-10 text-center text-sm text-muted-foreground">Sélectionnez une dent pour voir son état, son historique et ses radios.</p>}
+          {(isDesktop && sheet) || <p className="py-10 text-center text-sm text-muted-foreground">{L('Sélectionnez une dent pour voir son état, son historique et ses radios.')}</p>}
         </aside>
       </div>
 
@@ -132,7 +134,7 @@ export default function DentalTab({ patient, currency }: { patient: Patient; cur
       {canPlan ? (
         <TreatmentPlans base={base} cabinetApi={cabinetApi} patientId={patient.id} plans={plans} currency={currency} onAddAct={(planId) => openAct(planId)} />
       ) : (
-        <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">Les plans de traitement, devis et échéanciers sont inclus dans les plans Pro et Clinique.</p>
+        <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{L('Les plans de traitement, devis et échéanciers sont inclus dans les plans Pro et Clinique.')}</p>
       )}
 
       <ActDialog

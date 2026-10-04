@@ -15,6 +15,7 @@ import { Badge } from '../components/ui/badge'
 import { Skeleton } from '../components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
+import { useL } from '../lib/labels'
 
 interface AuditEntry {
   id: string
@@ -47,6 +48,7 @@ const readableAction = (entry: AuditEntry) => EVENTS[entry.action]?.label || (en
   : entry.action)
 
 export default function AuditLog() {
+  const L = useL()
   const { t } = useTranslation()
   const [cabinetId, setCabinetId] = useState('all')
   const [method, setMethod] = useState('all')
@@ -125,7 +127,7 @@ export default function AuditLog() {
                     <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${methodTone[entry.method] || 'bg-[#F0E8FF] text-[#5731B7]'}`}><History size={15} /></span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold text-[#14231E]">{EVENTS[entry.action] ? readableAction(entry) : `${t(`audit.methods.${entry.method}`, entry.method)} · ${readableAction(entry)}`}</p>
+                        <p className="truncate text-sm font-semibold text-[#14231E]">{EVENTS[entry.action] ? L(readableAction(entry)) : `${t(`audit.methods.${entry.method}`, entry.method)} · ${readableAction(entry)}`}</p>
                         <Badge variant={entry.status >= 400 ? 'destructive' : 'success'} className="shrink-0">{entry.status}</Badge>
                       </div>
                       <p className="truncate text-xs text-[#5A6B65]">{who(entry)}{entry.cabinetName ? ` · ${entry.cabinetName}` : ''}</p>
@@ -142,7 +144,7 @@ export default function AuditLog() {
                       <TableHead>{t('audit.user')}</TableHead>
                       <TableHead>{t('audit.cabinet')}</TableHead>
                       <TableHead>{t('audit.method')}</TableHead>
-                      <TableHead>Détail</TableHead>
+                      <TableHead>{L('Détail')}</TableHead>
                       <TableHead>{t('audit.status')}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -155,7 +157,7 @@ export default function AuditLog() {
                           {entry.user && <p className="text-xs text-[#5A6B65]">{entry.user.email}</p>}
                         </TableCell>
                         <TableCell>{entry.cabinetName || '—'}</TableCell>
-                        <TableCell><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${EVENTS[entry.action]?.tone || methodTone[entry.method] || 'bg-[#EEE7F8] text-[#6746A8]'}`}>{EVENTS[entry.action]?.kind || t(`audit.methods.${entry.method}`, entry.method)}</span></TableCell>
+                        <TableCell><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${EVENTS[entry.action]?.tone || methodTone[entry.method] || 'bg-[#EEE7F8] text-[#6746A8]'}`}>{EVENTS[entry.action] ? L(EVENTS[entry.action].kind) : t(`audit.methods.${entry.method}`, entry.method)}</span></TableCell>
                         <TableCell className="max-w-sm whitespace-normal">
                           <p className="font-medium">{readableAction(entry)}</p>
                           <p className="truncate text-xs text-[#8A9A94]">{entry.path}</p>

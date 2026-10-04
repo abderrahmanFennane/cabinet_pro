@@ -3,7 +3,10 @@ import { prisma } from '../config/prisma';
 import { normalizePhone } from '../utils/phone';
 
 export type MessageChannel = 'SMS' | 'WHATSAPP';
-export type MessageKind = 'APPOINTMENT_REMINDER' | 'PLAN_EXPIRY' | 'OWNER_MESSAGE' | 'WELCOME' | 'TEST' | 'PASSWORD_RESET';
+export type MessageKind = 'APPOINTMENT_REMINDER' | 'PLAN_EXPIRY' | 'OWNER_MESSAGE' | 'WELCOME' | 'TEST' | 'PASSWORD_RESET' | 'PAYMENT_REMINDER' | 'DOCUMENT';
+
+/** Messages to patients that count against the cabinet's monthly allowance (plan). */
+export const PATIENT_MESSAGE_KINDS: MessageKind[] = ['APPOINTMENT_REMINDER', 'PAYMENT_REMINDER', 'DOCUMENT'];
 
 // SMS goes through Infobip; WhatsApp through Meta's WhatsApp Cloud API.
 // Without credentials a provider runs in "log" mode: the message is stored with status LOGGED but not sent.
@@ -25,6 +28,8 @@ const whatsapp = {
     WELCOME: '',
     TEST: '',
     PASSWORD_RESET: '',
+    PAYMENT_REMINDER: process.env.WHATSAPP_TEMPLATE_PAYMENT || '',
+    DOCUMENT: process.env.WHATSAPP_TEMPLATE_DOCUMENT || '',
   } as Record<MessageKind, string>,
 };
 
@@ -173,6 +178,12 @@ export async function createInboxMessage(input: Omit<SendInput, 'channel' | 'toP
     if (isDuplicate(err)) return null;
     throw err;
   }
+}
+
+/** Patient messages sent (or logged) by the cabinet since the start of the month. */
+export async function monthlyUsage(cabinetId: string, now = new Date()) {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  return prisma.message.count({ where: { cabinetId, kind: { in: PATIENT_MESSAGE_KINDS }, channel: { in: ['SMS', 'WHATSAPP'] }, status: { in: ['SENT', 'LOGGED'] }, createdAt: { gte: monthStart } } });
 }
 
 export const channelsFor = (setting?: string | null): MessageChannel[] => {

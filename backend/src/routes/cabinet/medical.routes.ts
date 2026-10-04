@@ -24,6 +24,7 @@ const consultationSchema = z.object({
   examination: z.string().nullable().optional(),
   vitals: vitalsSchema,
   diagnosis: z.string().nullable().optional(),
+  diagnosisCode: z.string().trim().max(10).regex(/^[A-Z][0-9]{2}(\.[0-9A-Z]{1,4})?$/, 'Code CIM-10 invalide').nullable().optional().or(z.literal('').transform(() => null)),
   plan: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
 });
@@ -190,7 +191,7 @@ router.post('/prescriptions/:id/renew', requireMedicalAccess, requirePermissions
 
 // ─── Certificates, sick leave, referral letters, exam requests (F-DOC-03) ───
 
-const DOCUMENT_TYPES = ['CERTIFICATE', 'SICK_LEAVE', 'REFERRAL', 'EXAM_REQUEST', 'OTHER'] as const;
+const DOCUMENT_TYPES = ['CERTIFICATE', 'SICK_LEAVE', 'REFERRAL', 'EXAM_REQUEST', 'PHYSIO_PRESCRIPTION', 'PREGNANCY_DECLARATION', 'OTHER'] as const;
 
 router.get('/documents', canReadPrescriptions, async (req: Request, res: Response, next: NextFunction) => {
   try {

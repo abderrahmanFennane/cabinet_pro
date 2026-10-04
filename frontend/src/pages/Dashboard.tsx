@@ -8,6 +8,8 @@ import { useAuth, useCabinetApi, useCabinetPath } from '../lib/hooks'
 import { formatCurrency } from '../lib/utils'
 import { CabinetDashboard } from '../types'
 import { PageHeader } from '../components/layout/PageHeader'
+import SpecialtyStats from '../components/layout/SpecialtyStats'
+import { useL } from '../lib/labels'
 
 function Stat({ icon, label, value, hint, to }: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string; to?: string }) {
   const body = (
@@ -24,6 +26,7 @@ function Stat({ icon, label, value, hint, to }: { icon: React.ReactNode; label: 
 }
 
 export default function Dashboard() {
+  const L = useL()
   const { t } = useTranslation()
   const { user, hasPermissions } = useAuth()
   const cabinetApi = useCabinetApi()
@@ -38,22 +41,24 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow={user?.cabinet?.name} title={`Bonjour ${user?.title ? `${user.title} ` : ''}${user?.lastName || ''}`} subtitle={user?.role === 'PRACTITIONER' ? 'Vos chiffres personnels' : 'Activité du cabinet'} />
-      {!data ? <p className="text-sm text-muted-foreground">Chargement…</p> : (
+      <PageHeader eyebrow={user?.cabinet?.name} title={`${L('Bonjour')} ${user?.title ? `${user.title} ` : ''}${user?.lastName || ''}`} subtitle={user?.role === 'PRACTITIONER' ? L('Vos chiffres personnels') : L('Activité du cabinet')} />
+      {!data ? <p className="text-sm text-muted-foreground">{L('Chargement…')}</p> : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Stat icon={<CalendarDays size={19} />} label="Rendez-vous du jour" value={data.todayAppointments} hint={`${data.seenToday} patient(s) vu(s)`} to={cabinetPath('/waiting-room')} />
-            <Stat icon={<Wallet size={19} />} label="Encaissé aujourd’hui" value={formatCurrency(data.revenueToday, currency)} hint={`Ce mois : ${formatCurrency(data.revenueMonth, currency)}`} to={hasPermissions('MANAGE_BILLING') ? cabinetPath('/billing') : undefined} />
-            <Stat icon={<AlertCircle size={19} />} label="Impayés" value={formatCurrency(data.unpaid.amount, currency)} hint={`${data.unpaid.invoices} facture(s)`} to={hasPermissions('MANAGE_BILLING') ? cabinetPath('/billing?status=OPEN') : undefined} />
-            <Stat icon={<UserRoundCheck size={19} />} label="Taux d’absence (30 j)" value={`${Math.round(data.noShowRate * 100)} %`} />
-            <Stat icon={<UserPlus size={19} />} label="Nouveaux patients" value={data.newPatients} hint="ce mois" to={cabinetPath('/patients')} />
-            {dental && hasPermissions('DENTAL_TREATMENT_PLAN') && <Stat icon={<ClipboardList size={19} />} label="Plans de traitement en cours" value={data.dental.plansInProgress} hint={`${data.dental.quotesOpen} devis en attente`} />}
+            <Stat icon={<CalendarDays size={19} />} label={L('Rendez-vous du jour')} value={data.todayAppointments} hint={`${data.seenToday} ${L('patient(s) vu(s)')}`} to={cabinetPath('/waiting-room')} />
+            <Stat icon={<Wallet size={19} />} label={L('Encaissé aujourd’hui')} value={formatCurrency(data.revenueToday, currency)} hint={`Ce mois : ${formatCurrency(data.revenueMonth, currency)}`} to={hasPermissions('MANAGE_BILLING') ? cabinetPath('/billing') : undefined} />
+            <Stat icon={<AlertCircle size={19} />} label={L('Impayés')} value={formatCurrency(data.unpaid.amount, currency)} hint={`${data.unpaid.invoices} ${L('facture(s)')}`} to={hasPermissions('MANAGE_BILLING') ? cabinetPath('/billing?status=OPEN') : undefined} />
+            <Stat icon={<UserRoundCheck size={19} />} label={L('Taux d’absence (30 j)')} value={`${Math.round(data.noShowRate * 100)} %`} />
+            <Stat icon={<UserPlus size={19} />} label={L('Nouveaux patients')} value={data.newPatients} hint={L('ce mois')} to={cabinetPath('/patients')} />
+            {dental && hasPermissions('DENTAL_TREATMENT_PLAN') && <Stat icon={<ClipboardList size={19} />} label={L('Plans de traitement en cours')} value={data.dental.plansInProgress} hint={`${data.dental.quotesOpen} devis en attente`} />}
           </div>
+
+          <SpecialtyStats />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-[14px] border border-[#D8E1DD] bg-white p-4">
-              <h3 className="mb-3 font-bold">Actes les plus fréquents (30 jours)</h3>
-              {data.topActs.length === 0 ? <p className="text-sm text-muted-foreground">Aucun acte facturé.</p> : (
+              <h3 className="mb-3 font-bold">{L('Actes les plus fréquents (30 jours)')}</h3>
+              {data.topActs.length === 0 ? <p className="text-sm text-muted-foreground">{L('Aucun acte facturé.')}</p> : (
                 <ul className="space-y-2 text-sm">
                   {data.topActs.map(a => (
                     <li key={a.label} className="flex items-center justify-between gap-3">
@@ -65,7 +70,7 @@ export default function Dashboard() {
               )}
             </section>
             <section className="rounded-[14px] border border-[#D8E1DD] bg-white p-4">
-              <h3 className="mb-3 font-bold">Encaissements sur 6 mois</h3>
+              <h3 className="mb-3 font-bold">{L('Encaissements sur 6 mois')}</h3>
               {data.revenueByMonth ? (
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
@@ -74,11 +79,11 @@ export default function Dashboard() {
                       <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
                       <YAxis tickLine={false} axisLine={false} fontSize={12} width={60} />
                       <Tooltip formatter={(v: number) => formatCurrency(v, currency)} cursor={{ fill: '#E9EFEC' }} />
-                      <Bar dataKey="total" name="Encaissé" fill="#12705A" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="total" name={L('Encaissé')} fill="#12705A" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ) : <p className="text-sm text-muted-foreground">Statistiques avancées disponibles dans les plans Pro et Clinique.</p>}
+              ) : <p className="text-sm text-muted-foreground">{L('Statistiques avancées disponibles dans les plans Pro et Clinique.')}</p>}
             </section>
           </div>
         </>

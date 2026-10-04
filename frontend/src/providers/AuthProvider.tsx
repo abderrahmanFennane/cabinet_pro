@@ -7,12 +7,20 @@ import { PermissionKey } from '../types/permissions'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  /** Returns the second step to show when the account uses two-step login. */
+  login: (email: string, password: string) => Promise<MfaChallenge | null>
+  /** Stores a session token (end of the two-step login) and loads the profile. */
+  startSession: (token: string) => Promise<void>
   logout: () => void
   fetchMe: () => Promise<void>
   hasRole: (roles: Role | Role[]) => boolean
   hasPermissions: (permissions: PermissionKey | PermissionKey[]) => boolean
   isAuthenticated: boolean
+}
+
+export interface MfaChallenge {
+  mfa: 'SETUP' | 'VERIFY'
+  mfaToken: string
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -67,15 +75,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     try {
       const { data } = await api.post('/auth/login', { email, password })
+      if (data.data?.mfa) {
+        setLoading(false)
+        return data.data as MfaChallenge
+      }
       const token = data.token || data.data?.token
       if (token) {
         localStorage.setItem('token', token)
       }
       await fetchMe()
+      return null
     } catch (err) {
       setLoading(false)
       throw err
     }
+  }
+
+  const startSession = async (token: string) => {
+    localStorage.setItem('token', token)
+    setLoading(true)
+    await fetchMe()
   }
 
   const logout = () => {
@@ -102,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, logout, fetchMe, hasRole, hasPermissions, isAuthenticated }}
+      value={{ user, loading, login, startSession, logout, fetchMe, hasRole, hasPermissions, isAuthenticated }}
     >
       {children}
     </AuthContext.Provider>

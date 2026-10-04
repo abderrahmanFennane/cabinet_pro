@@ -13,6 +13,7 @@ import { Textarea } from '../ui/textarea'
 import { Label } from '../ui/label'
 import { TOOTH_STATE_CODES } from './Odontogram'
 import ToothGlyph from './ToothGlyph'
+import { useL } from '../../lib/labels'
 
 const FACES: Face[] = ['M', 'D', 'O', 'I', 'V', 'L', 'P']
 
@@ -28,6 +29,7 @@ type Props = {
 
 /** F-DEN-04: current state, faces, dated history with practitioner, X-rays and notes of one tooth. */
 export default function ToothSheet({ base, cabinetId, patientId, tooth, currency, onClose, onAddAct }: Props) {
+  const L = useL()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
@@ -55,13 +57,13 @@ export default function ToothSheet({ base, cabinetId, patientId, tooth, currency
 
   const save = useMutation({
     mutationFn: () => api.put(`${base}/teeth/${tooth}`, { state, faces, notes: notes || null }),
-    onSuccess: () => { toast.success(`Dent ${tooth} mise à jour`); refresh() },
+    onSuccess: () => { toast.success(`${L('Dent')} ${tooth} ${L('mise à jour')}`); refresh() },
     onError: (err) => toast.error(apiError(err)),
   })
 
   const perform = useMutation({
     mutationFn: (actId: string) => api.post(`${base}/acts/${actId}/perform`),
-    onSuccess: () => { toast.success('Acte réalisé'); refresh() },
+    onSuccess: () => { toast.success(L('Acte réalisé')); refresh() },
     onError: (err) => toast.error(apiError(err)),
   })
 
@@ -71,24 +73,24 @@ export default function ToothSheet({ base, cabinetId, patientId, tooth, currency
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Fiche de la dent</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{L('Fiche de la dent')}</p>
           <div className="flex items-center gap-3">
             <ToothGlyph tooth={tooth} state={state} upper={Math.floor(tooth / 10) % 4 === 1 || Math.floor(tooth / 10) % 4 === 2} className="h-16 w-auto" />
             <h3 className="font-mono text-2xl font-bold text-primary">{tooth}</h3>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={onAddAct}><Plus size={16} className="me-1" />Acte</Button>
-          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={onClose} aria-label="Fermer la fiche"><X size={18} /></Button>
+          <Button size="sm" onClick={onAddAct}><Plus size={16} className="me-1" />{L('Acte')}</Button>
+          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={onClose} aria-label={L('Fermer la fiche')}><X size={18} /></Button>
         </div>
       </div>
 
       {isLoading || !data ? (
-        <p className="py-6 text-sm text-muted-foreground">Chargement…</p>
+        <p className="py-6 text-sm text-muted-foreground">{L('Chargement…')}</p>
       ) : (
         <div className="flex-1 space-y-5 overflow-y-auto py-4">
           <section className="space-y-2">
-            <Label>État</Label>
+            <Label>{L('État')}</Label>
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
               {TOOTH_STATE_CODES.map(code => (
                 <button
@@ -106,7 +108,7 @@ export default function ToothSheet({ base, cabinetId, patientId, tooth, currency
           </section>
 
           <section className="space-y-2">
-            <Label>Faces concernées</Label>
+            <Label>{L('Faces concernées')}</Label>
             <div className="flex flex-wrap gap-1.5">
               {FACES.map(face => (
                 <button
@@ -121,18 +123,18 @@ export default function ToothSheet({ base, cabinetId, patientId, tooth, currency
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">M mésiale · D distale · O occlusale · I incisive · V vestibulaire · L linguale · P palatine</p>
+            <p className="text-xs text-muted-foreground">{L('M mésiale · D distale · O occlusale · I incisive · V vestibulaire · L linguale · P palatine')}</p>
           </section>
 
           <section className="space-y-2">
-            <Label htmlFor="tooth-notes">Notes</Label>
+            <Label htmlFor="tooth-notes">{L('Notes')}</Label>
             <Textarea id="tooth-notes" rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
-            <Button className="w-full" onClick={() => save.mutate()} disabled={save.isPending}>Enregistrer l’état</Button>
+            <Button className="w-full" onClick={() => save.mutate()} disabled={save.isPending}>{L('Enregistrer l’état')}</Button>
           </section>
 
           {data.planned.length > 0 && (
             <section className="space-y-2">
-              <h4 className="text-sm font-semibold">Actes planifiés</h4>
+              <h4 className="text-sm font-semibold">{L('Actes planifiés')}</h4>
               {data.planned.map(act => (
                 <div key={act.id} className="flex items-center justify-between gap-2 rounded-xl border border-border p-2.5 text-sm">
                   <div className="min-w-0">
@@ -140,7 +142,7 @@ export default function ToothSheet({ base, cabinetId, patientId, tooth, currency
                     <p className="text-xs text-muted-foreground">{[act.faces && `faces ${act.faces.replace(/,/g, '')}`, formatCurrency(act.price, currency)].filter(Boolean).join(' · ')}</p>
                   </div>
                   <Button size="sm" variant="secondary" onClick={() => perform.mutate(act.id)} disabled={perform.isPending}>
-                    <CheckCircle2 size={15} className="me-1" />Réaliser
+                    <CheckCircle2 size={15} className="me-1" />{L('Réaliser')}
                   </Button>
                 </div>
               ))}
@@ -148,9 +150,9 @@ export default function ToothSheet({ base, cabinetId, patientId, tooth, currency
           )}
 
           <section className="space-y-2">
-            <h4 className="text-sm font-semibold">Historique</h4>
+            <h4 className="text-sm font-semibold">{L('Historique')}</h4>
             {data.history.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun acte réalisé sur cette dent.</p>
+              <p className="text-sm text-muted-foreground">{L('Aucun acte réalisé sur cette dent.')}</p>
             ) : (
               <ol className="space-y-2 border-s-2 border-border ps-3">
                 {data.history.map(act => (
@@ -164,9 +166,9 @@ export default function ToothSheet({ base, cabinetId, patientId, tooth, currency
           </section>
 
           <section className="space-y-2">
-            <h4 className="text-sm font-semibold">Radios</h4>
+            <h4 className="text-sm font-semibold">{L('Radios')}</h4>
             {data.attachments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucune radio rattachée. Ajoutez-en depuis l’onglet Fichiers en indiquant la dent {tooth}.</p>
+              <p className="text-sm text-muted-foreground">{L('Aucune radio rattachée. Ajoutez-en depuis l’onglet Fichiers en indiquant la dent')} {tooth}.</p>
             ) : data.attachments.map(file => (
               <button key={file.id} type="button" onClick={() => openAttachment(cabinetId, patientId, file.id)} className="flex w-full items-center gap-2 rounded-lg border border-border p-2 text-start text-sm hover:bg-muted">
                 <FileImage size={16} className="text-primary" /> <span className="truncate">{file.title || file.fileName}</span>

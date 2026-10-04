@@ -39,6 +39,7 @@ const cabinetItems: NavItem[] = [
 ]
 
 const platformItems: NavItem[] = [
+  { labelKey: 'platform.nav', icon: <Home size={20} />, tabs: [{ to: '/platform', labelKey: 'platform.nav' }] },
   { labelKey: 'nav.allCabinets', icon: <Building2 size={20} />, tabs: [{ to: '/cabinets', labelKey: 'nav.allCabinets' }] },
   { labelKey: 'adminPage.usersTitle', icon: <UsersRound size={20} />, tabs: [{ to: '/users', labelKey: 'adminPage.usersTitle' }] },
   {

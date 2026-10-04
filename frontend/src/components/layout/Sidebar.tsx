@@ -35,7 +35,7 @@ export default function Sidebar() {
         <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-primary text-white"><ToothMark /></span>
         <div className="min-w-0">
           <b className="block text-[1.02rem] font-extrabold leading-tight">Cabinet Pro</b>
-          <small className="block truncate text-[0.78rem] text-[#5A6B65]">{superAdmin && !cabinetId ? 'Plateforme' : user.cabinet?.name || ''}</small>
+          <small className="block truncate text-[0.78rem] text-[#5A6B65]">{superAdmin && !cabinetId ? t('platform.label') : user.cabinet?.name || ''}</small>
         </div>
       </div>
 
@@ -75,10 +75,10 @@ export default function Sidebar() {
         <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#E9EFEC] text-[0.8rem] font-bold text-primary">
           {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full rounded-full object-cover" /> : getInitials(user.firstName, user.lastName)}
         </span>
-        <div className="min-w-0 flex-1">
+        <NavLink to="/account" className="min-w-0 flex-1 rounded-lg hover:text-primary" title={t('account.menu')}>
           <b className="block truncate text-[0.88rem] leading-tight">{user.title ? `${user.title} ` : ''}{user.firstName} {user.lastName}</b>
           <small className="text-[0.78rem] text-[#5A6B65]">{t(`roles.${user.role}`)}</small>
-        </div>
+        </NavLink>
         <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-[#5A6B65] hover:text-[#B8372C]" onClick={logout} aria-label={t('nav.logout')} title={t('nav.logout')}>
           <LogOut size={17} className="rtl:rotate-180" />
         </Button>

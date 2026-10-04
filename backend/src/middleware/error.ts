@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import { readableIssue } from '../utils/readable-issue';
 
 export class AppError extends Error {
   public statusCode: number;
@@ -32,7 +33,7 @@ export const errorHandler = (
     message = err.message;
   } else if (err instanceof ZodError) {
     statusCode = 400;
-    message = 'Données invalides';
+    message = err.issues.length ? readableIssue(err.issues[0], _req.body, 'donnée') : 'Données invalides';
     errors = {};
     for (const issue of err.issues) {
       const key = issue.path.join('.');

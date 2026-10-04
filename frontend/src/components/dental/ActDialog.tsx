@@ -11,6 +11,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { NativeSelect } from '../ui/native-select'
+import { useL } from '../../lib/labels'
 
 const FACES: Face[] = ['M', 'D', 'O', 'I', 'V', 'L', 'P']
 
@@ -29,6 +30,7 @@ type Props = {
 
 /** Adds a dental act from the catalogue on the selected teeth, either planned or performed now (F-DEN-05, F-DEN-08). */
 export default function ActDialog({ open, onOpenChange, cabinetApi, base, patientId, teeth, plans, canPlan, currency, defaultPlanId }: Props) {
+  const L = useL()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data: acts = [] } = useQuery({
@@ -83,7 +85,7 @@ export default function ActDialog({ open, onOpenChange, cabinetApi, base, patien
       session: session ? Number(session) : null,
     }),
     onSuccess: () => {
-      toast.success(status === 'DONE' ? 'Acte réalisé : dent et facture mises à jour' : 'Acte planifié')
+      toast.success(status === 'DONE' ? L('Acte réalisé : dent et facture mises à jour') : L('Acte planifié'))
       for (const key of ['dental-chart', 'tooth', 'dental-plans', 'dental-acts', 'patient', 'timeline']) {
         queryClient.invalidateQueries({ queryKey: [key, patientId] })
       }
@@ -100,33 +102,33 @@ export default function ActDialog({ open, onOpenChange, cabinetApi, base, patien
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Ajouter un acte</DialogTitle>
-          <DialogDescription>Choisissez l’acte dans le catalogue du cabinet. Un acte réalisé met à jour la dent et s’ajoute à la facture du jour.</DialogDescription>
+          <DialogTitle>{L('Ajouter un acte')}</DialogTitle>
+          <DialogDescription>{L('Choisissez l’acte dans le catalogue du cabinet. Un acte réalisé met à jour la dent et s’ajoute à la facture du jour.')}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (valid) submit.mutate() }}>
           <div className="space-y-1.5">
-            <Label htmlFor="act">Acte</Label>
+            <Label htmlFor="act">{L('Acte')}</Label>
             <NativeSelect id="act" value={actId} onChange={e => setActId(e.target.value)} required>
-              <option value="">Choisir un acte…</option>
+              <option value="">{L('Choisir un acte…')}</option>
               {byCategory.map(([category, list]) => (
                 <optgroup key={category} label={category}>
                   {list.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name} ({formatCurrency(a.price, currency)})</option>)}
                 </optgroup>
               ))}
             </NativeSelect>
-            {act?.resultingState && <p className="text-xs text-muted-foreground">Une fois réalisé, la dent passe en « {t(`toothState.${act.resultingState}`)} ».</p>}
+            {act?.resultingState && <p className="text-xs text-muted-foreground">{L('Une fois réalisé, la dent passe en')} « {t(`toothState.${act.resultingState}`)} ».</p>}
           </div>
 
           {needsTeeth && (
             <div className="space-y-1.5">
-              <Label htmlFor="teeth">Dent(s) — notation FDI</Label>
-              <Input id="teeth" value={teethText} onChange={e => setTeethText(e.target.value)} placeholder="ex. 36 ou 35, 36" inputMode="numeric" />
-              {act.scope === 'TOOTH' && toothCount > 1 && <p className="text-xs text-muted-foreground">Un acte sera créé par dent ({toothCount}).</p>}
+              <Label htmlFor="teeth">{L('Dent(s) — notation FDI')}</Label>
+              <Input id="teeth" value={teethText} onChange={e => setTeethText(e.target.value)} placeholder={L('ex. 36 ou 35, 36')} inputMode="numeric" />
+              {act.scope === 'TOOTH' && toothCount > 1 && <p className="text-xs text-muted-foreground">{L('Un acte sera créé par dent')} ({toothCount}).</p>}
             </div>
           )}
           {act?.scope === 'QUADRANT' && (
             <div className="space-y-1.5">
-              <Label htmlFor="quadrant">Quadrant</Label>
+              <Label htmlFor="quadrant">{L('Quadrant')}</Label>
               <NativeSelect id="quadrant" value={quadrant} onChange={e => setQuadrant(Number(e.target.value))}>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map(q => <option key={q} value={q}>Quadrant {q}</option>)}
               </NativeSelect>
@@ -134,7 +136,7 @@ export default function ActDialog({ open, onOpenChange, cabinetApi, base, patien
           )}
           {act?.usesFaces && (
             <div className="space-y-1.5">
-              <Label>Faces</Label>
+              <Label>{L('Faces')}</Label>
               <div className="flex flex-wrap gap-1.5">
                 {FACES.map(face => (
                   <button key={face} type="button" title={t(`face.${face}`)} aria-pressed={faces.includes(face)}
@@ -149,16 +151,16 @@ export default function ActDialog({ open, onOpenChange, cabinetApi, base, patien
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="price">Tarif {act?.scope === 'TOOTH' ? 'par dent' : ''}</Label>
+              <Label htmlFor="price">{L('Tarif')} {act?.scope === 'TOOTH' ? L('par dent') : ''}</Label>
               <Input id="price" type="number" min={0} step="0.01" value={price} onChange={e => setPrice(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Statut</Label>
+              <Label>{L('Statut')}</Label>
               <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
                 {(['PLANNED', 'DONE'] as const).map(value => (
                   <button key={value} type="button" onClick={() => setStatus(value)} aria-pressed={status === value}
                     className={cn('h-8 rounded-lg text-sm font-semibold', status === value ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground')}>
-                    {value === 'PLANNED' ? 'À planifier' : 'Réalisé'}
+                    {value === 'PLANNED' ? L('À planifier') : L('Réalisé')}
                   </button>
                 ))}
               </div>
@@ -168,22 +170,22 @@ export default function ActDialog({ open, onOpenChange, cabinetApi, base, patien
           {status === 'PLANNED' && canPlan && (
             <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
               <div className="space-y-1.5">
-                <Label htmlFor="plan">Plan de traitement</Label>
+                <Label htmlFor="plan">{L('Plan de traitement')}</Label>
                 <NativeSelect id="plan" value={planId} onChange={e => setPlanId(e.target.value)}>
-                  <option value="">Aucun (acte isolé)</option>
+                  <option value="">{L('Aucun (acte isolé)')}</option>
                   {openPlans.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
                 </NativeSelect>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="session">Séance</Label>
+                <Label htmlFor="session">{L('Séance')}</Label>
                 <Input id="session" type="number" min={1} value={session} onChange={e => setSession(e.target.value)} placeholder="1" />
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-sm">Total : <b>{formatCurrency(total, currency)}</b></p>
-            <Button type="submit" disabled={!valid || submit.isPending}>{status === 'DONE' ? 'Enregistrer l’acte réalisé' : 'Planifier l’acte'}</Button>
+            <p className="text-sm">{L('Total :')} <b>{formatCurrency(total, currency)}</b></p>
+            <Button type="submit" disabled={!valid || submit.isPending}>{status === 'DONE' ? L('Enregistrer l’acte réalisé') : L('Planifier l’acte')}</Button>
           </div>
         </form>
       </DialogContent>

@@ -12,9 +12,11 @@ import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
 import WalkInDialog from '../components/agenda/WalkInDialog'
 import { STATUS_STYLE, useAppointmentStatus } from '../components/agenda/AppointmentActions'
+import { useL } from '../lib/labels'
 
 /** F-AGD-03: real-time waiting room for the assistant and the practitioner, with waiting times and walk-ins. */
 export default function WaitingRoom() {
+  const L = useL()
   const { t } = useTranslation()
   const { user, hasPermissions } = useAuth()
   const cabinetApi = useCabinetApi()
@@ -30,10 +32,10 @@ export default function WaitingRoom() {
   })
 
   const groups: { title: string; statuses: AppointmentStatus[]; empty: string }[] = [
-    { title: 'En salle d’attente', statuses: ['ARRIVED'], empty: 'Personne en attente.' },
-    { title: 'En consultation', statuses: ['IN_CONSULTATION'], empty: 'Aucune consultation en cours.' },
-    { title: 'À venir aujourd’hui', statuses: ['PLANNED', 'CONFIRMED'], empty: 'Plus de rendez-vous prévus.' },
-    { title: 'Terminés et absents', statuses: ['DONE', 'NO_SHOW'], empty: '—' },
+    { title: L('En salle d’attente'), statuses: ['ARRIVED'], empty: L('Personne en attente.') },
+    { title: L('En consultation'), statuses: ['IN_CONSULTATION'], empty: L('Aucune consultation en cours.') },
+    { title: L('À venir aujourd’hui'), statuses: ['PLANNED', 'CONFIRMED'], empty: L('Plus de rendez-vous prévus.') },
+    { title: L('Terminés et absents'), statuses: ['DONE', 'NO_SHOW'], empty: '—' },
   ]
 
   const bringIn = (a: Appointment) => setStatus.mutate({ id: a.id, status: 'IN_CONSULTATION' }, {
@@ -42,7 +44,7 @@ export default function WaitingRoom() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title={t('nav.waitingRoom')} subtitle={format(new Date(), 'dd/MM/yyyy')} actions={<Button onClick={() => setWalkIn(true)}><UserPlus size={17} className="me-1.5" />Patient sans rendez-vous</Button>} />
+      <PageHeader title={t('nav.waitingRoom')} subtitle={format(new Date(), 'dd/MM/yyyy')} actions={<Button onClick={() => setWalkIn(true)}><UserPlus size={17} className="me-1.5" />{L('Patient sans rendez-vous')}</Button>} />
       <div className="grid gap-4 lg:grid-cols-2">
         {groups.map(group => {
           const list = items.filter(a => group.statuses.includes(a.status))
@@ -53,20 +55,20 @@ export default function WaitingRoom() {
                 <div key={a.id} className={cn('flex flex-wrap items-center gap-2 rounded-xl border-s-4 border p-3', STATUS_STYLE[a.status])}>
                   <div className="min-w-0 flex-1">
                     <button type="button" className="block truncate text-start font-semibold hover:underline" onClick={() => a.patientId && navigate(cabinetPath(`/patients/${a.patientId}`))}>
-                      {a.patient ? `${a.patient.lastName} ${a.patient.firstName}` : '—'}{a.walkIn && <span className="ms-1.5 rounded bg-white/70 px-1.5 text-[0.65rem] font-bold uppercase">sans RDV</span>}
+                      {a.patient ? `${a.patient.lastName} ${a.patient.firstName}` : '—'}{a.walkIn && <span className="ms-1.5 rounded bg-white/70 px-1.5 text-[0.65rem] font-bold uppercase">{L('sans RDV')}</span>}
                     </button>
-                    <p className="truncate text-xs opacity-80">{[a.walkIn ? `arrivé ${format(new Date(a.arrivedAt || a.date), 'HH:mm')}` : `RDV ${format(new Date(a.date), 'HH:mm')}`, practitionerName(a.practitioner), a.reason].filter(Boolean).join(' · ')}</p>
+                    <p className="truncate text-xs opacity-80">{[a.walkIn ? `${L('arrivé')} ${format(new Date(a.arrivedAt || a.date), 'HH:mm')}` : `${L('RDV')} ${format(new Date(a.date), 'HH:mm')}`, practitionerName(a.practitioner), a.reason].filter(Boolean).join(' · ')}</p>
                   </div>
                   {a.waitingMinutes !== null && a.waitingMinutes !== undefined && (
                     <span className={cn('flex items-center gap-1 text-sm font-bold', a.waitingMinutes >= 30 && 'text-[#B23A33]')}><Clock size={14} />{a.waitingMinutes} min</span>
                   )}
                   <div className="flex gap-1.5">
                     {(a.status === 'PLANNED' || a.status === 'CONFIRMED') && <>
-                      <Button size="sm" onClick={() => setStatus.mutate({ id: a.id, status: 'ARRIVED' })}>Arrivé</Button>
-                      {new Date(a.date) < new Date() && <Button size="sm" variant="outline" onClick={() => setStatus.mutate({ id: a.id, status: 'NO_SHOW' })}>Absent</Button>}
+                      <Button size="sm" onClick={() => setStatus.mutate({ id: a.id, status: 'ARRIVED' })}>{L('Arrivé')}</Button>
+                      {new Date(a.date) < new Date() && <Button size="sm" variant="outline" onClick={() => setStatus.mutate({ id: a.id, status: 'NO_SHOW' })}>{L('Absent')}</Button>}
                     </>}
-                    {a.status === 'ARRIVED' && <Button size="sm" onClick={() => bringIn(a)}><DoorOpen size={15} className="me-1" />Faire entrer</Button>}
-                    {a.status === 'IN_CONSULTATION' && <Button size="sm" variant="outline" onClick={() => setStatus.mutate({ id: a.id, status: 'DONE' })}>Terminé</Button>}
+                    {a.status === 'ARRIVED' && <Button size="sm" onClick={() => bringIn(a)}><DoorOpen size={15} className="me-1" />{L('Faire entrer')}</Button>}
+                    {a.status === 'IN_CONSULTATION' && <Button size="sm" variant="outline" onClick={() => setStatus.mutate({ id: a.id, status: 'DONE' })}>{L('Terminé')}</Button>}
                   </div>
                 </div>
               ))}

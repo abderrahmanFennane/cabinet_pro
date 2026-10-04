@@ -8,6 +8,7 @@ import { formatDateTimeFR } from '../../lib/utils'
 import { Appointment, AppointmentStatus } from '../../types'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
+import { useL } from '../../lib/labels'
 
 export const STATUS_STYLE: Record<AppointmentStatus, string> = {
   PLANNED: 'border-[#B5CCC2] bg-[#E9EFEC] text-[#14231E]',
@@ -42,6 +43,7 @@ export function useAppointmentStatus() {
 type Props = { appointment: Appointment | null; onClose: () => void; onEdit: (a: Appointment) => void }
 
 export default function AppointmentActions({ appointment, onClose, onEdit }: Props) {
+  const L = useL()
   const { t } = useTranslation()
   const { hasPermissions } = useAuth()
   const navigate = useNavigate()
@@ -50,8 +52,8 @@ export default function AppointmentActions({ appointment, onClose, onEdit }: Pro
   const queryClient = useQueryClient()
   const setStatus = useAppointmentStatus()
   const remove = useMutation({
-    mutationFn: (id: string) => api.delete(`${cabinetApi}/appointments/${id}`),
-    onSuccess: () => { toast.success('Rendez-vous supprimé'); queryClient.invalidateQueries({ queryKey: ['appointments'] }); onClose() },
+    mutationFn: ({ id, following }: { id: string; following?: boolean }) => api.delete(`${cabinetApi}/appointments/${id}`, { params: following ? { scope: 'following' } : undefined }),
+    onSuccess: (res) => { toast.success(res.data.message || L('Rendez-vous supprimé')); queryClient.invalidateQueries({ queryKey: ['appointments'] }); onClose() },
     onError: (err) => toast.error(apiError(err)),
   })
   if (!appointment) return null
@@ -70,20 +72,21 @@ export default function AppointmentActions({ appointment, onClose, onEdit }: Pro
           <DialogTitle>{a.patient ? `${a.patient.lastName} ${a.patient.firstName}` : 'Rendez-vous'}</DialogTitle>
           <DialogDescription>{formatDateTimeFR(a.date)} · {a.durationMinutes} min · {practitionerName(a.practitioner)}</DialogDescription>
         </DialogHeader>
-        <p className="text-sm"><span className="text-muted-foreground">Statut : </span><b>{t(`appointmentStatus.${a.status}`)}</b>{a.reason ? <><span className="text-muted-foreground"> · Motif : </span>{a.reason}</> : null}</p>
+        <p className="text-sm"><span className="text-muted-foreground">{L('Statut :')} </span><b>{t(`appointmentStatus.${a.status}`)}</b>{a.reason ? <><span className="text-muted-foreground"> {L('· Motif :')} </span>{a.reason}</> : null}</p>
         {!!NEXT[a.status]?.length && (
           <div className="flex flex-wrap gap-2">
             {NEXT[a.status]!.map(s => (
               <Button key={s} size="sm" variant={s === 'CANCELLED' || s === 'NO_SHOW' ? 'outline' : 'default'} onClick={() => change(s)} disabled={setStatus.isPending}>
-                {s === 'IN_CONSULTATION' ? 'Faire entrer' : t(`appointmentStatus.${s}`)}
+                {s === 'IN_CONSULTATION' ? L('Faire entrer') : t(`appointmentStatus.${s}`)}
               </Button>
             ))}
           </div>
         )}
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
-          {a.patientId && <Button variant="outline" onClick={() => navigate(cabinetPath(`/patients/${a.patientId}`))}>Dossier</Button>}
-          {!['DONE', 'CANCELLED'].includes(a.status) && <Button variant="outline" onClick={() => { onClose(); onEdit(a) }}>Déplacer</Button>}
-          <Button variant="ghost" onClick={() => { if (window.confirm('Supprimer ce rendez-vous ?')) remove.mutate(a.id) }}>Supprimer</Button>
+          {a.patientId && <Button variant="outline" onClick={() => navigate(cabinetPath(`/patients/${a.patientId}`))}>{L('Dossier')}</Button>}
+          {!['DONE', 'CANCELLED'].includes(a.status) && <Button variant="outline" onClick={() => { onClose(); onEdit(a) }}>{L('Déplacer')}</Button>}
+          <Button variant="ghost" onClick={() => { if (window.confirm(L('Supprimer ce rendez-vous ?'))) remove.mutate({ id: a.id }) }}>{L('Supprimer')}</Button>
+          {a.seriesId && <Button variant="ghost" onClick={() => { if (window.confirm(t('recurring.deleteFollowingConfirm'))) remove.mutate({ id: a.id, following: true }) }}>{t('recurring.deleteFollowing')}</Button>}
         </div>
       </DialogContent>
     </Dialog>

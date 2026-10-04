@@ -4,6 +4,7 @@ import { prisma } from '../../config/prisma';
 import { requireMedicalAccess, requirePermissions } from '../../middleware/auth';
 import { AppError } from '../../middleware/error';
 import { sendSuccess } from '../../utils/response';
+import { readableIssue } from '../../utils/readable-issue';
 import { findPatientOr404, logPatientAccess } from '../../utils/patient-scope';
 import { isPrivateKind, RECORD_KINDS, RECORD_KIND_KEYS, RecordKind } from '../../data/specialty-modules';
 
@@ -22,8 +23,7 @@ const serialize = (record: any) => ({ ...record, data: JSON.parse(record.data ||
 function parseData(kind: RecordKind, data: unknown) {
   const result = RECORD_KINDS[kind].schema.safeParse(data ?? {});
   if (!result.success) {
-    const first = result.error.issues[0];
-    throw new AppError(`Donnée invalide (${first.path.join('.') || kind}) : ${first.message}`, 400);
+    throw new AppError(readableIssue(result.error.issues[0], data, kind), 400);
   }
   return result.data;
 }

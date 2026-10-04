@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import Stripe from 'stripe';
 import { z } from 'zod';
 import { prisma } from '../config/prisma';
 import { authenticate, requirePermissions, requireRoles } from '../middleware/auth';
@@ -7,11 +6,10 @@ import { AppError } from '../middleware/error';
 import { sendSuccess } from '../utils/response';
 import { writeAuditLog } from '../utils/audit';
 import { planQuotas } from '../services/cabinet-setup';
+import { cmiConfig, cmiConfigured, cmiForm, verifyCmiHash } from '../services/cmi';
 
 const router = Router();
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
 
 const getAdminCabinet = async (req: Request) => {
   if (!req.user?.cabinetId) throw new AppError('Cabinet non trouvé', 404);
@@ -59,86 +57,90 @@ router.get('/admin/invoices', authenticate, requireRoles('SUPER_ADMIN'), async (
   } catch (err) { next(err); }
 });
 
+/** Activates the plan after a confirmed payment (idempotent: a payment already recorded is not applied twice). */
+async function applyPayment(invoiceId: string, extra: { reference?: string | null }) {
+  const invoice = await prisma.billingInvoice.findUnique({ where: { id: invoiceId } });
+  if (!invoice || invoice.status === 'PAID') return invoice;
+  const plan = await prisma.plan.findUnique({ where: { code: invoice.plan } });
+  if (!plan) return invoice;
+  const cabinet = await prisma.cabinet.findUnique({ where: { id: invoice.cabinetId } });
+  // A renewal paid before the end of the current period extends it, it does not cut it short.
+  const from = cabinet?.currentPeriodEnd && cabinet.currentPeriodEnd > new Date() && cabinet.plan === plan.code ? new Date(cabinet.currentPeriodEnd) : new Date();
+  const periodEnd = new Date(from);
+  periodEnd.setMonth(periodEnd.getMonth() + plan.durationMonths);
+  await prisma.$transaction([
+    prisma.cabinet.update({ where: { id: invoice.cabinetId }, data: { plan: plan.code, isActive: true, subscriptionStatus: 'ACTIVE', currentPeriodEnd: periodEnd, ...planQuotas(plan) } }),
+    prisma.billingInvoice.update({ where: { id: invoice.id }, data: { status: 'PAID', paidAt: new Date(), periodEnd, reference: extra.reference ?? invoice.reference } }),
+    prisma.subscriptionHistory.create({ data: { cabinetId: invoice.cabinetId, plan: plan.code, status: 'ACTIVE', startedAt: new Date(), periodEnd } }),
+  ]);
+  void writeAuditLog({ cabinetId: invoice.cabinetId, action: 'PAYMENT_RECEIVED', method: 'CMI', path: '/api/billing/cmi/callback', status: 200 });
+  return invoice;
+}
+
+const publicApi = (req: Request) => `${(process.env.API_PUBLIC_URL || `${frontendUrl}/api`).replace(/\/$/, '')}`;
+
+/**
+ * Online payment by card through the CMI (Moroccan interbank gateway): returns the signed form the browser
+ * posts to the CMI page. The plan is activated only by the CMI callback, never by the return of the browser.
+ */
 router.post('/checkout', authenticate, requireRoles('OWNER'), requirePermissions('MANAGE_SUBSCRIPTION'), async (req, res, next) => {
   try {
-    if (!stripe) throw new AppError('Paiement Stripe non configuré', 503);
+    if (!cmiConfigured()) throw new AppError('Paiement en ligne non configuré : contactez Cabinet Pro pour régler par virement.', 503);
     const { planCode } = z.object({ planCode: z.string().min(1) }).parse(req.body);
     const cabinet = await getAdminCabinet(req);
     const plan = await prisma.plan.findUnique({ where: { code: planCode, isActive: true, deletedAt: null } });
     if (!plan) throw new AppError('Plan indisponible', 404);
+    const amount = Number(plan.monthlyPrice) * plan.durationMonths;
+    if (!(amount > 0)) throw new AppError('Ce plan n’a pas de prix', 400);
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      line_items: [{ price_data: { currency: 'mad', product_data: { name: `Abonnement ${plan.name}` }, unit_amount: Math.round(Number(plan.monthlyPrice) * 100), recurring: { interval: 'month', interval_count: plan.durationMonths } }, quantity: 1 }],
-      customer_email: cabinet.email || undefined,
-      success_url: `${frontendUrl}/settings?billing=success`,
-      cancel_url: `${frontendUrl}/settings?billing=cancelled`,
-      metadata: { cabinetId: cabinet.id, planCode: plan.code },
-      subscription_data: { metadata: { cabinetId: cabinet.id, planCode: plan.code } },
+    const invoice = await prisma.billingInvoice.create({ data: { cabinetId: cabinet.id, plan: plan.code, amount, currency: 'MAD', status: 'PENDING', paymentMethod: 'CMI' } });
+    const api = publicApi(req);
+    const form = cmiForm({
+      orderId: invoice.id, amount,
+      okUrl: `${api}/billing/cmi/return?result=ok`, failUrl: `${api}/billing/cmi/return?result=fail`,
+      callbackUrl: `${api}/billing/cmi/callback`, shopUrl: `${frontendUrl}/pricing`,
+      email: cabinet.email || req.user!.email, phone: cabinet.phone, name: cabinet.name,
     });
-
-    await prisma.billingInvoice.create({ data: { cabinetId: cabinet.id, stripeSessionId: session.id, plan: plan.code, amount: Number(plan.monthlyPrice), currency: 'MAD', status: 'PENDING' } });
-    sendSuccess(res, { checkoutUrl: session.url });
+    sendSuccess(res, { gateway: form, invoiceId: invoice.id });
   } catch (err) { next(err); }
 });
 
-router.post('/webhook', async (req: Request, res: Response) => {
-  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).send('Stripe webhook non configuré');
-  let event: Stripe.Event;
+/**
+ * CMI server-to-server notification. The answer is read by the CMI: "ACTION=POSTAUTH" captures the authorised
+ * amount, "APPROVED" acknowledges a declined payment, "FAILURE" rejects a message whose signature is wrong.
+ */
+router.post('/cmi/callback', async (req: Request, res: Response) => {
+  const params = Object.fromEntries(Object.entries(req.body || {}).map(([k, v]) => [k, String(v)])) as Record<string, string>;
+  res.type('text/plain');
+  if (!cmiConfigured() || !verifyCmiHash(params, cmiConfig().storeKey)) {
+    void writeAuditLog({ action: 'PAYMENT_BAD_SIGNATURE', method: 'CMI', path: '/api/billing/cmi/callback', status: 400 });
+    return res.send('FAILURE');
+  }
   try {
-    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'] as string, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch { return res.status(400).send('Signature Stripe invalide'); }
-
-  try {
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const cabinetId = session.metadata?.cabinetId;
-      const planCode = session.metadata?.planCode;
-      if (cabinetId && planCode) {
-        const plan = await prisma.plan.findUnique({ where: { code: planCode } });
-        if (plan) {
-          const periodEnd = new Date();
-          periodEnd.setMonth(periodEnd.getMonth() + plan.durationMonths);
-          await prisma.$transaction([
-            prisma.cabinet.update({ where: { id: cabinetId }, data: { plan: plan.code, isActive: true, subscriptionStatus: 'ACTIVE', currentPeriodEnd: periodEnd, ...planQuotas(plan) } }),
-            prisma.billingInvoice.updateMany({ where: { stripeSessionId: session.id }, data: { status: 'PAID', paidAt: new Date(), periodEnd } }),
-            prisma.subscriptionHistory.create({ data: { cabinetId, plan: plan.code, status: 'ACTIVE', startedAt: new Date(), periodEnd } }),
-          ]);
-        }
-      }
+    const invoice = await prisma.billingInvoice.findUnique({ where: { id: params.oid || '' } });
+    if (!invoice) return res.send('FAILURE');
+    const approved = params.ProcReturnCode === '00' && (params.Response || '').toLowerCase() === 'approved';
+    if (approved && Math.abs(Number(params.amount) - Number(invoice.amount)) > 0.009) {
+      await prisma.billingInvoice.update({ where: { id: invoice.id }, data: { status: 'FAILED', reference: `montant reçu ${params.amount}` } });
+      return res.send('FAILURE');
     }
-
-    if (event.type === 'invoice.paid') {
-      const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = (invoice as unknown as { subscription?: string | Stripe.Subscription }).subscription;
-      const subscription = subscriptionId ? await stripe.subscriptions.retrieve(String(subscriptionId)) : null;
-      const cabinetId = subscription?.metadata?.cabinetId;
-      const planCode = subscription?.metadata?.planCode;
-      if (cabinetId && planCode) {
-        const plan = await prisma.plan.findUnique({ where: { code: planCode } });
-        if (plan) {
-          const periodEnd = new Date();
-          periodEnd.setMonth(periodEnd.getMonth() + plan.durationMonths);
-          await prisma.cabinet.update({ where: { id: cabinetId }, data: { isActive: true, subscriptionStatus: 'ACTIVE', currentPeriodEnd: periodEnd } });
-          await prisma.billingInvoice.upsert({ where: { stripeInvoiceId: invoice.id }, update: { status: 'PAID', paidAt: new Date(), periodEnd, invoiceUrl: invoice.hosted_invoice_url || null }, create: { cabinetId, stripeInvoiceId: invoice.id, plan: plan.code, amount: Number(invoice.amount_paid || 0) / 100, currency: 'MAD', status: 'PAID', paidAt: new Date(), periodEnd, invoiceUrl: invoice.hosted_invoice_url || null } });
-          await prisma.subscriptionHistory.create({ data: { cabinetId, plan: plan.code, status: 'ACTIVE', startedAt: new Date(), periodEnd } });
-        }
-      }
+    if (approved) {
+      await applyPayment(invoice.id, { reference: params.TransId || params.AuthCode || null });
+      return res.send('ACTION=POSTAUTH');
     }
-
-    if (event.type === 'invoice.payment_failed') {
-      const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = (invoice as unknown as { subscription?: string | Stripe.Subscription }).subscription;
-      const subscription = subscriptionId ? await stripe.subscriptions.retrieve(String(subscriptionId)) : null;
-      const cabinetId = subscription?.metadata?.cabinetId;
-      if (cabinetId) {
-        await prisma.cabinet.update({ where: { id: cabinetId }, data: { subscriptionStatus: 'PAST_DUE' } });
-        await prisma.billingInvoice.upsert({ where: { stripeInvoiceId: invoice.id }, update: { status: 'FAILED' }, create: { cabinetId, stripeInvoiceId: invoice.id, plan: subscription?.metadata?.planCode || 'UNKNOWN', amount: Number(invoice.amount_due || 0) / 100, currency: 'MAD', status: 'FAILED' } });
-        void writeAuditLog({ cabinetId, action: 'PAYMENT_FAILED', method: 'WEBHOOK', path: '/api/billing/webhook', status: 200 });
-      }
+    if (invoice.status === 'PENDING') {
+      await prisma.billingInvoice.update({ where: { id: invoice.id }, data: { status: 'FAILED', reference: (params.ErrMsg || params.ProcReturnCode || '').slice(0, 180) || null } });
+      void writeAuditLog({ cabinetId: invoice.cabinetId, action: 'PAYMENT_FAILED', method: 'CMI', path: '/api/billing/cmi/callback', status: 200 });
     }
-    res.json({ received: true });
-  } catch { res.status(500).send('Erreur webhook'); }
+    return res.send('APPROVED');
+  } catch {
+    return res.send('FAILURE');
+  }
+});
+
+/** Browser back from the CMI page (a POST, which the single-page app cannot receive): redirect to the plans page. */
+router.all('/cmi/return', (req: Request, res: Response) => {
+  res.redirect(303, `${frontendUrl}/pricing?billing=${req.query.result === 'ok' ? 'success' : 'failed'}`);
 });
 
 export default router;

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
+import { useL } from '../../lib/labels'
 
 const METHODS: PaymentMethod[] = ['CASH', 'CARD', 'TRANSFER', 'CHECK']
 
@@ -25,6 +26,7 @@ type Props = {
 
 /** Cash, card, transfer or check; partial payments allowed, never above the remaining balance. */
 export default function PaymentDialog({ open, onOpenChange, cabinetApi, patientId, target, currency, suggested }: Props) {
+  const L = useL()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [amount, setAmount] = useState('')
@@ -44,8 +46,8 @@ export default function PaymentDialog({ open, onOpenChange, cabinetApi, patientI
       patientId, invoiceId: target.invoiceId || null, quoteId: target.quoteId || null, method, amount: Number(amount), reference: reference || null,
     }),
     onSuccess: () => {
-      toast.success('Paiement enregistré')
-      for (const key of ['invoice', 'invoices', 'quote', 'quotes', 'payments', 'patient', 'timeline', 'dashboard']) queryClient.invalidateQueries({ queryKey: [key] })
+      toast.success(L('Paiement enregistré'))
+      for (const key of ['invoice', 'invoices', 'quote', 'quotes', 'payments', 'patient', 'timeline', 'dashboard', 'unpaid', 'cash-day']) queryClient.invalidateQueries({ queryKey: [key] })
       onOpenChange(false)
     },
     onError: (err) => toast.error(apiError(err)),
@@ -58,16 +60,16 @@ export default function PaymentDialog({ open, onOpenChange, cabinetApi, patientI
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Encaisser</DialogTitle>
-          <DialogDescription>{target.label} · reste à payer {formatCurrency(target.remaining, currency)}</DialogDescription>
+          <DialogTitle>{L('Encaisser')}</DialogTitle>
+          <DialogDescription>{target.label} · {L('reste à payer')} {formatCurrency(target.remaining, currency)}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (valid) pay.mutate() }}>
           <div className="space-y-1.5">
-            <Label htmlFor="amount">Montant</Label>
+            <Label htmlFor="amount">{L('Montant')}</Label>
             <Input id="amount" type="number" inputMode="decimal" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
           </div>
           <div className="space-y-1.5">
-            <Label>Mode de paiement</Label>
+            <Label>{L('Mode de paiement')}</Label>
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
               {METHODS.map(m => (
                 <button key={m} type="button" onClick={() => setMethod(m)} aria-pressed={method === m}
@@ -79,7 +81,7 @@ export default function PaymentDialog({ open, onOpenChange, cabinetApi, patientI
           </div>
           {(method === 'CHECK' || method === 'TRANSFER') && (
             <div className="space-y-1.5">
-              <Label htmlFor="reference">{method === 'CHECK' ? 'Numéro du chèque' : 'Référence du virement'}</Label>
+              <Label htmlFor="reference">{method === 'CHECK' ? L('Numéro du chèque') : L('Référence du virement')}</Label>
               <Input id="reference" value={reference} onChange={e => setReference(e.target.value)} />
             </div>
           )}

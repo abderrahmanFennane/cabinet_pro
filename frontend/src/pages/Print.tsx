@@ -16,13 +16,18 @@ function useCabinet() {
   return useQuery({ queryKey: ['cabinet', cabinetId], queryFn: async () => (await api.get(`/cabinets/${cabinetId}`)).data.data as Cabinet, enabled: !!cabinetId, refetchInterval: false })
 }
 
-function PrintPage({ ready, children, signature }: { ready: boolean; children: React.ReactNode; signature?: string }) {
-  const { data: cabinet } = useCabinet()
+/** A4 sheet with the cabinet's letterhead. `cabinet` is given on the patient's shared-link page (no session). */
+export function PrintPage({ ready, children, signature, cabinet: given, autoPrint = true }: {
+  ready: boolean; children: React.ReactNode; signature?: string; cabinet?: Pick<Cabinet, 'name' | 'letterhead' | 'address' | 'city' | 'phone' | 'email'>; autoPrint?: boolean
+}) {
+  const { data: fetched } = useCabinet()
+  const cabinet = given || fetched
   useEffect(() => {
-    if (!ready || !cabinet) return
+    // ?preview=1 opens the sheet without the print dialog
+    if (!ready || !cabinet || !autoPrint || new URLSearchParams(window.location.search).has('preview')) return
     const id = setTimeout(() => window.print(), 400)
     return () => clearTimeout(id)
-  }, [ready, cabinet])
+  }, [ready, cabinet, autoPrint])
   if (!ready || !cabinet) return <p className="p-10 text-center text-sm text-muted-foreground">Préparation du document…</p>
   return (
     <div className="min-h-screen bg-muted py-6 print:bg-white print:py-0">
@@ -47,7 +52,7 @@ function PrintPage({ ready, children, signature }: { ready: boolean; children: R
   )
 }
 
-const patientLine = (p?: Pick<Patient, 'firstName' | 'lastName' | 'sex'> | null, age?: number | null) =>
+export const patientLine = (p?: Pick<Patient, 'firstName' | 'lastName' | 'sex'> | null, age?: number | null) =>
   p ? `${p.sex === 'F' ? 'Mme' : p.sex === 'M' ? 'M.' : ''} ${p.firstName} ${p.lastName.toUpperCase()}${age !== null && age !== undefined ? `, ${age} ans` : ''}`.trim() : ''
 
 export function PrintPrescription() {
@@ -57,15 +62,23 @@ export function PrintPrescription() {
   const { data: rx } = useQuery({ queryKey: ['prescription', id], queryFn: async () => (await api.get(`${cabinetApi}/patients/${patientId}/prescriptions/${id}`)).data.data as Prescription, refetchInterval: false })
   return (
     <PrintPage ready={!!patient && !!rx} signature={practitionerName(rx?.practitioner)}>
-      <div className="mb-6 flex justify-between"><p>{patientLine(patient, patient?.age)}</p><p>Le {formatDateFR(rx?.date)}</p></div>
+      {rx && <PrescriptionBody patient={patient} rx={rx} />}
+    </PrintPage>
+  )
+}
+
+export function PrescriptionBody({ patient, rx }: { patient?: Pick<Patient, 'firstName' | 'lastName' | 'sex' | 'age'> | null; rx: Pick<Prescription, 'date' | 'items' | 'notes'> }) {
+  return (
+    <>
+      <div className="mb-6 flex justify-between"><p>{patientLine(patient, patient?.age)}</p><p>Le {formatDateFR(rx.date)}</p></div>
       <h1 className="mb-6 text-center text-xl font-bold tracking-[0.2em]">ORDONNANCE</h1>
       <ol className="space-y-4">
-        {rx?.items.map((item, i) => (
+        {rx.items.map((item, i) => (
           <li key={i}><p className="font-bold">{i + 1}. {item.drug}</p>{item.dosage && <p className="ps-5">{item.dosage}</p>}{item.duration && <p className="ps-5">Pendant {item.duration}</p>}{item.notes && <p className="ps-5 italic">{item.notes}</p>}</li>
         ))}
       </ol>
-      {rx?.notes && <p className="mt-6 whitespace-pre-line">{rx.notes}</p>}
-    </PrintPage>
+      {rx.notes && <p className="mt-6 whitespace-pre-line">{rx.notes}</p>}
+    </>
   )
 }
 
@@ -75,10 +88,18 @@ export function PrintDocument() {
   const { data: doc } = useQuery({ queryKey: ['document', id], queryFn: async () => (await api.get(`${cabinetApi}/patients/${patientId}/documents/${id}`)).data.data as MedicalDocument, refetchInterval: false })
   return (
     <PrintPage ready={!!doc} signature={practitionerName(doc?.practitioner)}>
-      <p className="mb-6 text-end">Le {formatDateFR(doc?.createdAt)}</p>
-      <h1 className="mb-8 text-center text-xl font-bold uppercase tracking-[0.15em]">{doc?.title}</h1>
-      <p className="whitespace-pre-line">{doc?.body}</p>
+      {doc && <DocumentBody doc={doc} />}
     </PrintPage>
+  )
+}
+
+export function DocumentBody({ doc }: { doc: Pick<MedicalDocument, 'createdAt' | 'title' | 'body'> }) {
+  return (
+    <>
+      <p className="mb-6 text-end">Le {formatDateFR(doc.createdAt)}</p>
+      <h1 className="mb-8 text-center text-xl font-bold uppercase tracking-[0.15em]">{doc.title}</h1>
+      <p className="whitespace-pre-line">{doc.body}</p>
+    </>
   )
 }
 
@@ -89,10 +110,17 @@ export function PrintInvoice() {
   const { data: cabinet } = useCabinet()
   const { data: inv } = useQuery({ queryKey: ['invoice', id], queryFn: async () => (await api.get(`${cabinetApi}/billing/invoices/${id}`)).data.data as Invoice, refetchInterval: false })
   const currency = cabinet?.currency || 'MAD'
-  const remaining = inv ? Number(inv.total) - Number(inv.paid) : 0
   return (
     <PrintPage ready={!!inv}>
-      {inv && (
+      {inv && <InvoiceBody inv={inv} currency={currency} />}
+    </PrintPage>
+  )
+}
+
+export function InvoiceBody({ inv, currency }: { inv: Invoice; currency: string }) {
+  const { t } = useTranslation()
+  const remaining = Number(inv.total) - Number(inv.paid)
+  return (
         <div className="space-y-5">
           <div className="flex justify-between gap-6">
             <div><h1 className="text-xl font-bold">{Number(inv.paid) >= Number(inv.total) ? 'FACTURE ACQUITTÉE' : 'FACTURE'}</h1><p>N° {inv.number} · {formatDateFR(inv.date)}</p></div>
@@ -106,8 +134,6 @@ export function PrintInvoice() {
           </div>
           {!!inv.payments?.length && <p className="text-[12px]">Règlements : {inv.payments.map(p => `${formatDateFR(p.paidAt)} ${t(`paymentMethod.${p.method}`)} ${formatCurrency(p.amount, currency)}`).join(' ; ')}</p>}
         </div>
-      )}
-    </PrintPage>
   )
 }
 
