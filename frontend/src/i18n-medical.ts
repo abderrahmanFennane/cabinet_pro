@@ -2,7 +2,7 @@
 export const frMedical = {
   nav: {
     dashboard: 'Tableau de bord', agenda: 'Agenda', waitingRoom: 'Salle d’attente', patients: 'Patients', billing: 'Facturation',
-    team: 'Équipe', settings: 'Paramètres', pricing: 'Abonnement', allCabinets: 'Cabinets', plans: 'Plans', specialties: 'Spécialités',
+    team: 'Équipe', settings: 'Paramètres', pricing: 'Abonnement', allCabinets: 'Cabinets', trialRequests: 'Demandes d’essai', plans: 'Plans', specialties: 'Spécialités',
     invoices: 'Factures SaaS', messages: 'Messages', audit: 'Journal d’audit', openMenu: 'Ouvrir le menu', closeMenu: 'Fermer le menu',
     demo: 'Cabinet de démonstration', support: 'Accès support', backToPlatform: 'Retour aux cabinets',
   },
@@ -31,7 +31,7 @@ type Dict = typeof frMedical
 export const enMedical: Dict = {
   nav: {
     dashboard: 'Dashboard', agenda: 'Schedule', waitingRoom: 'Waiting room', patients: 'Patients', billing: 'Billing',
-    team: 'Team', settings: 'Settings', pricing: 'Subscription', allCabinets: 'Practices', plans: 'Plans', specialties: 'Specialties',
+    team: 'Team', settings: 'Settings', pricing: 'Subscription', allCabinets: 'Practices', trialRequests: 'Trial requests', plans: 'Plans', specialties: 'Specialties',
     invoices: 'SaaS invoices', messages: 'Messages', audit: 'Audit log', openMenu: 'Open menu', closeMenu: 'Close menu',
     demo: 'Demo practice', support: 'Support access', backToPlatform: 'Back to practices',
   },
@@ -58,7 +58,7 @@ export const enMedical: Dict = {
 export const arMedical: Dict = {
   nav: {
     dashboard: 'لوحة القيادة', agenda: 'المواعيد', waitingRoom: 'قاعة الانتظار', patients: 'المرضى', billing: 'الفوترة',
-    team: 'الفريق', settings: 'الإعدادات', pricing: 'الاشتراك', allCabinets: 'العيادات', plans: 'الباقات', specialties: 'التخصصات',
+    team: 'الفريق', settings: 'الإعدادات', pricing: 'الاشتراك', allCabinets: 'العيادات', trialRequests: 'طلبات التجربة', plans: 'الباقات', specialties: 'التخصصات',
     invoices: 'فواتير الاشتراكات', messages: 'الرسائل', audit: 'سجل التدقيق', openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة',
     demo: 'عيادة تجريبية', support: 'دخول الدعم', backToPlatform: 'العودة إلى العيادات',
   },

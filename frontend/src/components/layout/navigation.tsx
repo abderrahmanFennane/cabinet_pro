@@ -1,5 +1,7 @@
 import { useLocation } from 'react-router-dom'
-import { Building2, FileClock, Home, Layers, MoreHorizontal, Settings, UserPlus, UsersRound, Wallet } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Building2, FileClock, Home, Inbox, Layers, MoreHorizontal, Settings, UserPlus, UsersRound, Wallet } from 'lucide-react'
+import api from '../../lib/api'
 import { useAuth, useCabinetId } from '../../lib/hooks'
 import { Role } from '../../types'
 import { PermissionKey } from '../../types/permissions'
@@ -13,6 +15,8 @@ export interface NavItem {
   tabs: NavTab[]
   permissions?: PermissionKey[]
   roles?: Role[]
+  /** Small count shown next to the item (e.g. new trial requests). */
+  badge?: 'trialRequests'
 }
 
 // Each role sees 3 to 5 items. Related pages share one item and appear as tabs, so the menu stays short.
@@ -41,6 +45,7 @@ const cabinetItems: NavItem[] = [
 const platformItems: NavItem[] = [
   { labelKey: 'platform.nav', icon: <Home size={20} />, tabs: [{ to: '/platform', labelKey: 'platform.nav' }] },
   { labelKey: 'nav.allCabinets', icon: <Building2 size={20} />, tabs: [{ to: '/cabinets', labelKey: 'nav.allCabinets' }] },
+  { labelKey: 'nav.trialRequests', icon: <Inbox size={20} />, tabs: [{ to: '/trial-requests', labelKey: 'nav.trialRequests' }], badge: 'trialRequests' },
   { labelKey: 'adminPage.usersTitle', icon: <UsersRound size={20} />, tabs: [{ to: '/users', labelKey: 'adminPage.usersTitle' }] },
   {
     labelKey: 'nav.plans', icon: <Layers size={20} />,
@@ -80,4 +85,17 @@ export function useNavigation() {
 
   const active = items.find(item => item.tabs.some(tab => pathname === tab.to || pathname.startsWith(`${tab.to}/`)))
   return { items, active, inCabinet }
+}
+
+/** Counts shown on the menu: new trial requests for the Super Admin (refreshed every minute). */
+export function useNavBadges() {
+  const { user } = useAuth()
+  const cabinetId = useCabinetId()
+  const { data } = useQuery({
+    queryKey: ['trial-requests', 'NEW', 'badge'],
+    queryFn: async () => (await api.get('/trial-requests', { params: { status: 'NEW' } })).data.data.counts as Record<string, number>,
+    enabled: user?.role === Role.SUPER_ADMIN && !cabinetId,
+    refetchInterval: 60_000,
+  })
+  return { trialRequests: data?.NEW ?? 0 } as Record<NonNullable<NavItem['badge']>, number>
 }

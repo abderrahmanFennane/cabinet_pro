@@ -24,7 +24,7 @@ export default function CredentialsDialog({ credentials, onClose }: { credential
   const L = useL()
   const [copied, setCopied] = useState(false)
   if (!credentials) return null
-  const loginUrl = `${window.location.origin}/login`
+  const loginUrl = `${window.location.origin}/admin`
   const message = [
     `${L('Bonjour')} ${credentials.name},`,
     `${L('Votre accès à Cabinet Pro')}${credentials.cabinetName ? ` (${credentials.cabinetName})` : ''} :`,

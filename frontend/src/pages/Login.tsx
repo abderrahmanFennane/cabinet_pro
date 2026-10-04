@@ -243,8 +243,9 @@ export default function Login() {
                 {loading ? <><Loader2 className="me-2 h-5 w-5 animate-spin" />{t('auth.signingIn')}</> : t('auth.signIn')}
               </Button>
               <div className="border-t border-[#D8E1DD] pt-4">
-                <Button type="button" variant="outline" size="lg" className="w-full gap-2" onClick={() => go('register')}>
-                  <Gift size={17} className="text-[#99600B]" /> {t('trial.cta', { days: TRIAL_DAYS })}
+                {/* New clinics ask for a trial on the home page; the Super Admin opens the account. */}
+                <Button type="button" variant="outline" size="lg" className="w-full gap-2" asChild>
+                  <a href="/#essai"><Gift size={17} className="text-[#99600B]" /> {L('Demander un essai gratuit')}</a>
                 </Button>
               </div>
             </form>

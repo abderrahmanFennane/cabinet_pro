@@ -55,8 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthExpired = () => {
       setUser(null)
       setLoading(false)
-      if (window.location.pathname !== '/login') {
-        navigate('/login', { replace: true })
+      // Public pages (home page, document shared with a patient) stay where they are.
+      const path = window.location.pathname
+      if (path !== '/admin' && path !== '/' && !path.startsWith('/d/')) {
+        navigate('/admin', { replace: true })
       }
     }
     window.addEventListener('auth:expired', handleAuthExpired)
@@ -100,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem('token')
     setUser(null)
-    navigate('/login', { replace: true })
+    navigate('/admin', { replace: true })
   }
 
   const hasRole = (roles: Role | Role[]) => {

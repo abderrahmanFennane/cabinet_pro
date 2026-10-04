@@ -171,7 +171,7 @@ router.post('/:id/resend-access', async (req: Request, res: Response, next: Next
     }
     const password = tempPassword();
     await prisma.user.update({ where: { id: existing.id }, data: { password: await hashPassword(password), tokenVersion: { increment: 1 }, isActive: true } });
-    const loginUrl = `${(process.env.FRONTEND_URL || String(req.headers.origin || '')).replace(/\/$/, '')}/login`;
+    const loginUrl = `${(process.env.FRONTEND_URL || String(req.headers.origin || '')).replace(/\/$/, '')}/admin`;
     let status: string | null = null;
     if (channel !== 'NONE' && existing.phone) {
       const sent = await sendMessage({

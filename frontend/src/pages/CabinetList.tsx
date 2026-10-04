@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Building2, CalendarClock, Eye, MessageCircle, MessageSquareText, MoreHorizontal, Plus, RotateCcw, Search, ShieldCheck, Trash2, Users, Wand2 } from 'lucide-react'
@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { SubscriptionDialog, SubscriptionTarget } from '../components/SubscriptionDialog'
 import { SaasSection } from '../components/dashboard/SaasSection'
 import { useL } from '../lib/labels'
+import type { TrialRequest } from './TrialRequests'
 
 const SPECIALTIES: Specialty[] = ['DENTISTRY', 'GENERAL', 'PEDIATRICS', 'GYNECOLOGY', 'OPHTHALMOLOGY', 'CARDIOLOGY', 'DERMATOLOGY', 'PHYSIOTHERAPY', 'PSYCHIATRY']
 type StatusKey = 'active' | 'trial' | 'expired' | 'suspended'
@@ -67,6 +68,22 @@ export default function CabinetList() {
   const refresh = () => ['all-cabinets', 'saas-metrics', 'subscription-alerts'].forEach(key => queryClient.invalidateQueries({ queryKey: [key] }))
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [createdId, setCreatedId] = useState<string | null>(null)
+  // "Créer le cabinet" from a trial request: the form opens prefilled, and the request is marked converted afterwards.
+  const location = useLocation()
+  const [requestId, setRequestId] = useState<string | null>(null)
+  useEffect(() => {
+    const r = (location.state as { trialRequest?: TrialRequest } | null)?.trialRequest
+    if (!r || !plans.length) return
+    const parts = r.fullName.replace(/^(dr|pr|docteur|professeur)\.?\s+/i, '').trim().split(/\s+/)
+    setForm({
+      ...emptyForm, name: r.cabinetName || `Cabinet ${r.fullName}`, specialty: (r.specialty as Specialty) || emptyForm.specialty, city: r.city || '', phone: r.phone, email: r.email,
+      plan: plans.find(p => p.isActive && p.code === 'TRIAL')?.code || '', ownerFirstName: parts[0] || '', ownerLastName: parts.slice(1).join(' '),
+      ownerEmail: r.email, ownerPhone: r.phone, ownerPassword: generatePassword(),
+    })
+    setRequestId(r.id)
+    setCreating(true)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, plans, navigate, location.pathname])
   const create = useMutation({
     mutationFn: async () => (await api.post('/cabinets', {
       name: form.name, specialty: form.specialty, city: form.city || undefined, phone: form.phone || undefined, email: form.email || null, plan: form.plan,
@@ -76,6 +93,7 @@ export default function CabinetList() {
       toast.success(form.plan === 'TRIAL' ? L('Cabinet créé en essai gratuit') : L('Cabinet créé et abonnement activé'))
       setCredentials({ name: `${form.ownerTitle ? `${form.ownerTitle} ` : ''}${form.ownerFirstName} ${form.ownerLastName}`, email: form.ownerEmail.toLowerCase(), password: form.ownerPassword, phone: form.ownerPhone || form.phone, cabinetName: cabinet.name })
       setCreatedId(cabinet.id)
+      if (requestId) { void api.patch(`/trial-requests/${requestId}`, { status: 'CONVERTED', cabinetId: cabinet.id }).then(() => queryClient.invalidateQueries({ queryKey: ['trial-requests'] })); setRequestId(null) }
       setCreating(false); setForm(emptyForm); refresh()
     },
     onError: (err) => toast.error(apiError(err)),

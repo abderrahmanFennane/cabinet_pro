@@ -28,7 +28,15 @@ export const errorHandler = (
   let message = 'Erreur interne du serveur';
   let errors: Record<string, string> | undefined;
 
-  if (err instanceof AppError) {
+  const bodyError = (err as { type?: string }).type;
+  if (bodyError === 'entity.too.large') {
+    // Body above the allowed size (e.g. a robot sending megabytes to a public form).
+    statusCode = 413;
+    message = 'Requête trop volumineuse';
+  } else if (bodyError === 'entity.parse.failed') {
+    statusCode = 400;
+    message = 'Requête mal formée';
+  } else if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;
   } else if (err instanceof ZodError) {

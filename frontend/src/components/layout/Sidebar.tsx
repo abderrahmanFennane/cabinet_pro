@@ -6,7 +6,7 @@ import { Role } from '../../types'
 import { getInitials } from '../ui/avatar'
 import { Button } from '../ui/button'
 import { cn } from '../../lib/utils'
-import { useNavigation } from './navigation'
+import { useNavBadges, useNavigation } from './navigation'
 
 export function ToothMark({ size = 20 }: { size?: number }) {
   return (
@@ -24,6 +24,7 @@ export default function Sidebar() {
   const cabinetId = useCabinetId()
   const cabinetPath = useCabinetPath()
   const { items, active, inCabinet } = useNavigation()
+  const badges = useNavBadges()
   if (!user) return null
   const superAdmin = user.role === Role.SUPER_ADMIN
   const can = t(`can.${user.role}`, { returnObjects: true }) as string[]
@@ -58,7 +59,8 @@ export default function Sidebar() {
               active === item ? 'bg-[#DCEEE7] text-primary' : 'text-[#5A6B65] hover:bg-[#E9EFEC] hover:text-[#14231E]',
             )}
           >
-            {item.icon}{t(item.labelKey)}
+            {item.icon}<span className="flex-1">{t(item.labelKey)}</span>
+            {item.badge && badges[item.badge] > 0 && <span className="rounded-full bg-[#B8372C] px-2 py-0.5 text-[0.72rem] font-bold text-white">{badges[item.badge]}</span>}
           </NavLink>
         ))}
       </nav>
@@ -92,6 +94,7 @@ export function BottomNav() {
   const { t } = useTranslation()
   const cabinetPath = useCabinetPath()
   const { items, active, inCabinet } = useNavigation()
+  const badges = useNavBadges()
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col border-t border-[#D8E1DD] bg-white px-1 pb-[calc(6px+env(safe-area-inset-bottom,0px))] pt-1.5 lg:hidden">
       {items.map(item => (
@@ -100,7 +103,7 @@ export function BottomNav() {
           to={inCabinet ? cabinetPath(item.tabs[0].to) : item.tabs[0].to}
           className={cn('grid min-h-[52px] justify-items-center gap-0.5 px-0.5 py-1.5 text-[0.7rem] font-semibold', active === item ? 'text-primary' : 'text-[#5A6B65]')}
         >
-          {item.icon}<span className="max-w-full truncate">{t(item.labelKey)}</span>
+          <span className="relative">{item.icon}{item.badge && badges[item.badge] > 0 && <span className="absolute -end-2.5 -top-1.5 rounded-full bg-[#B8372C] px-1.5 text-[0.62rem] font-bold leading-4 text-white">{badges[item.badge]}</span>}</span><span className="max-w-full truncate">{t(item.labelKey)}</span>
         </NavLink>
       ))}
     </nav>

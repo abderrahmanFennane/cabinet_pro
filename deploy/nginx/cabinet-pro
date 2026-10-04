@@ -1,0 +1,152 @@
+# Cabinet Pro: /etc/nginx/sites-available/cabinet-pro
+# Frontend: https://cabinet.geriny.com  ·  API: https://api-cabinet.geriny.com -> Node on 127.0.0.1:4001
+# Needs /etc/nginx/conf.d/cabinet-pro-limits.conf (the cp_* zones). Certificate lines are certbot's: keep them.
+
+# ─── Frontend (built React app) ───
+server {
+    server_name cabinet.geriny.com;
+
+    root /var/www/cabinet-pro/frontend/dist;
+    index index.html;
+
+    # Flood protection: at most 30 open connections per visitor, slow clients cut off.
+    limit_conn cp_conn 30;
+    limit_req zone=cp_static burst=100 nodelay;
+    limit_req_status 429;
+    limit_conn_status 429;
+    client_header_timeout 10s;
+    client_body_timeout 10s;
+    send_timeout 20s;
+    keepalive_timeout 30s;
+    client_max_body_size 64k;   # the frontend receives no uploads
+
+    # Security headers (the API sets its own).
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Built files have a content hash in their name: the browser keeps them for a year.
+    # (add_header in a location replaces the server ones, so the security headers are repeated.)
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        try_files $uri =404;
+    }
+
+    # Hidden files (.env, .git…) are never served.
+    location ~ /\. {
+        deny all;
+        return 404;
+    }
+
+    location / {
+        # index.html is always re-checked, so a new release shows at once.
+        add_header Cache-Control "no-cache";
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        try_files $uri $uri/ /index.html;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/cabinet.geriny.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/cabinet.geriny.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+# ─── API (Node, port 4001) ───
+server {
+    server_name api-cabinet.geriny.com;
+
+    limit_conn cp_conn 40;
+    limit_req_status 429;
+    limit_conn_status 429;
+    client_header_timeout 10s;
+    client_body_timeout 30s;    # uploads from a slow mobile connection
+    send_timeout 30s;
+    keepalive_timeout 30s;
+    client_max_body_size 1m;    # raised below where files are sent
+
+    # Same proxy settings everywhere: real visitor IP for the app's own limits and logs.
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;     # exports and PDF can take a few seconds
+    proxy_send_timeout 60s;
+
+    # Public trial request form: a person sends it once or twice.
+    location /api/public/ {
+        limit_req zone=cp_form burst=3 nodelay;
+        client_max_body_size 20k;
+        proxy_pass http://127.0.0.1:4001;
+    }
+
+    # Sign-in, two-step codes, password reset: stops password guessing before it reaches the app.
+    location /api/auth/ {
+        limit_req zone=cp_auth burst=10 nodelay;
+        client_max_body_size 20k;
+        proxy_pass http://127.0.0.1:4001;
+    }
+
+    # Documents opened by patients from a link (date of birth check): guessing is slowed down.
+    location /api/share/ {
+        limit_req zone=cp_auth burst=10 nodelay;
+        client_max_body_size 20k;
+        proxy_pass http://127.0.0.1:4001;
+    }
+
+    # Card payment notifications from the bank (CMI): never limited, or a payment could be missed.
+    location /api/billing/cmi/ {
+        client_max_body_size 100k;
+        proxy_pass http://127.0.0.1:4001;
+    }
+
+    # Everything else of the app, including patient files and imports (images, PDF, Excel up to 10 MB).
+    location / {
+        limit_req zone=cp_api burst=60 nodelay;
+        client_max_body_size 12m;
+        proxy_pass http://127.0.0.1:4001;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/cabinet.geriny.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/cabinet.geriny.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+# ─── HTTP -> HTTPS (certbot) ───
+server {
+    if ($host = cabinet.geriny.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    server_name cabinet.geriny.com;
+    return 404; # managed by Certbot
+}
+
+server {
+    if ($host = api-cabinet.geriny.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    server_name api-cabinet.geriny.com;
+    return 404; # managed by Certbot
+}

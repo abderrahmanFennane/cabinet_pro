@@ -25,4 +25,6 @@ export const pages = {
   PatientFilePrint: () => import('../pages/PatientFilePrint'),
   ChildBooklet: () => import('../pages/ChildBooklet'),
   PlatformHome: () => import('../pages/PlatformHome'),
+  Landing: () => import('../pages/Landing'),
+  TrialRequests: () => import('../pages/TrialRequests'),
 }

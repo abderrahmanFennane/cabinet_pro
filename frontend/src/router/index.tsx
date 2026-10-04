@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AppLayout from '../components/layout/AppLayout'
 import Login from '../pages/Login'
 import NotFound from '../pages/NotFound'
@@ -34,6 +34,8 @@ const PatientFilePrint = lazy(pages.PatientFilePrint)
 const ChildBooklet = lazy(pages.ChildBooklet)
 const PlatformHome = lazy(pages.PlatformHome)
 const PrintQuote = lazy(() => pages.Print().then(m => ({ default: m.PrintQuote })))
+const Landing = lazy(pages.Landing)
+const TrialRequests = lazy(pages.TrialRequests)
 
 import { useAuth, useCabinetId } from '../lib/hooks'
 import { Role } from '../types'
@@ -50,7 +52,7 @@ type Props = {
 function ProtectedRoute({ children, roles, permissions, cabinet }: Props) {
   const { isAuthenticated, hasRole, hasPermissions, user } = useAuth()
   const cabinetId = useCabinetId()
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (!isAuthenticated) return <Navigate to="/admin" replace />
   if (roles && !hasRole(roles)) return <Navigate to="/404" replace />
   if (cabinet && user?.role === Role.SUPER_ADMIN && !cabinetId) return <Navigate to="/cabinets" replace />
   if (permissions?.length && !hasPermissions(permissions)) return <Navigate to="/403" replace />
@@ -59,10 +61,21 @@ function ProtectedRoute({ children, roles, permissions, cabinet }: Props) {
 
 function RedirectHome() {
   const { user, hasPermissions } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/admin" replace />
   if (user.role === Role.SUPER_ADMIN) return <Navigate to="/platform" replace />
   if (hasPermissions('MANAGE_APPOINTMENTS')) return <Navigate to="/today" replace />
   return <Navigate to="/patients" replace />
+}
+
+/** Old /login links (bookmarks, messages already sent) go to /admin, keeping the query string. */
+function LoginRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/admin${search}`} replace />
+}
+
+function Home() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <RedirectHome /> : <Landing />
 }
 
 const CABINET_ROLES = [Role.OWNER, Role.PRACTITIONER, Role.ASSISTANT, Role.SUPER_ADMIN]
@@ -76,7 +89,9 @@ export default function AppRouter() {
   return (
     <Suspense fallback={null}>
     <Routes>
-      <Route path="/login" element={<Login />} />
+      {/* Staff sign-in; the old address still works */}
+      <Route path="/admin" element={<Login />} />
+      <Route path="/login" element={<LoginRedirect />} />
       {/* Document sent to a patient by link: public, protected by the patient's date of birth */}
       <Route path="/d/:token" element={<SharedDocument />} />
       <Route path="/403" element={<PermissionDenied />} />
@@ -90,8 +105,9 @@ export default function AppRouter() {
       <Route path="/print/care-sheet/:invoiceId" element={inCabinet(<CareSheet />, ['MANAGE_BILLING'])} />
       <Route path="/print/quote/:id" element={inCabinet(<PrintQuote />, ['DENTAL_TREATMENT_PLAN'])} />
 
-      <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route index element={<RedirectHome />} />
+      {/* Visitors: public home page with the trial request form; signed-in users: their usual home */}
+      <Route path="/" element={<Home />} />
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="today" element={inCabinet(<Today />, ['MANAGE_APPOINTMENTS'])} />
         <Route path="dashboard" element={inCabinet(<Dashboard />, ['VIEW_REPORTS'])} />
         <Route path="agenda" element={inCabinet(<Agenda />, ['MANAGE_APPOINTMENTS'])} />
@@ -114,6 +130,7 @@ export default function AppRouter() {
         <Route path="messages" element={platform(<MessagesAdmin />)} />
         <Route path="audit" element={platform(<AuditLog />)} />
         <Route path="superadmin/settings" element={platform(<SuperAdminSettings />)} />
+        <Route path="trial-requests" element={platform(<TrialRequests />)} />
       </Route>
 
       <Route path="/404" element={<NotFound />} />

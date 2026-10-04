@@ -11,7 +11,7 @@ const FIELD: Record<string, string> = {
   rate: 'fréquence', pr: 'PR', qrs: 'QRS', qtc: 'QTc', lvef: 'FEVG', ldl: 'LDL', hdl: 'HDL', creatinine: 'créatinine', potassium: 'potassium', sodium: 'sodium',
   fundalHeight: 'hauteur utérine', fetalHeartRate: 'BCF', crl: 'LCC', nuchal: 'clarté nucale', bpd: 'BIP', hc: 'PC', ac: 'PA', fl: 'LF', efw: 'poids fœtal',
   gestationalWeeks: 'terme', birthWeight: 'poids de naissance', pain: 'douleur', score: 'score',
-  label: 'libellé', items: 'lignes', date: 'date', email: 'email', phone: 'téléphone', amount: 'montant', price: 'tarif', durationMinutes: 'durée', quantity: 'quantité', unitPrice: 'prix unitaire',
+  label: 'libellé', items: 'lignes', consent: 'accord', fullName: 'nom', cabinetName: 'cabinet', city: 'ville', specialty: 'spécialité', doctors: 'nombre de praticiens', message: 'message', date: 'date', email: 'email', phone: 'téléphone', amount: 'montant', price: 'tarif', durationMinutes: 'durée', quantity: 'quantité', unitPrice: 'prix unitaire',
 };
 
 const valueAt = (data: unknown, path: (string | number)[]) => path.reduce<any>((v, k) => (v == null ? undefined : v[k]), data);
