@@ -36,6 +36,10 @@ export const errorHandler = (
   } else if (bodyError === 'entity.parse.failed') {
     statusCode = 400;
     message = 'Requête mal formée';
+  } else if ((err as { code?: string }).code === 'LIMIT_FILE_SIZE') {
+    // Uploaded file above multer's limit.
+    statusCode = 413;
+    message = 'Fichier trop lourd';
   } else if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;

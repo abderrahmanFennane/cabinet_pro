@@ -54,7 +54,7 @@ export function Empty({ children }: { children: ReactNode }) {
 export function DeleteButton({ onDelete }: { onDelete: () => void }) {
   const L = useL()
   return (
-    <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-[#5A6B65] hover:text-[#B8372C]" aria-label="Supprimer"
+    <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-[#5A6B65] hover:text-[#B8372C]" aria-label={L('Supprimer')}
       onClick={() => { if (window.confirm(L('Supprimer cet élément ?'))) onDelete() }}>
       <Trash2 size={15} />
     </Button>

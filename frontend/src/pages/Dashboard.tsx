@@ -46,7 +46,7 @@ export default function Dashboard() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Stat icon={<CalendarDays size={19} />} label={L('Rendez-vous du jour')} value={data.todayAppointments} hint={`${data.seenToday} ${L('patient(s) vu(s)')}`} to={cabinetPath('/waiting-room')} />
-            <Stat icon={<Wallet size={19} />} label={L('Encaissé aujourd’hui')} value={formatCurrency(data.revenueToday, currency)} hint={`Ce mois : ${formatCurrency(data.revenueMonth, currency)}`} to={hasPermissions('MANAGE_BILLING') ? cabinetPath('/billing') : undefined} />
+            <Stat icon={<Wallet size={19} />} label={L('Encaissé aujourd’hui')} value={formatCurrency(data.revenueToday, currency)} hint={`${L('Ce mois :')} ${formatCurrency(data.revenueMonth, currency)}`} to={hasPermissions('MANAGE_BILLING') ? cabinetPath('/billing') : undefined} />
             <Stat icon={<AlertCircle size={19} />} label={L('Impayés')} value={formatCurrency(data.unpaid.amount, currency)} hint={`${data.unpaid.invoices} ${L('facture(s)')}`} to={hasPermissions('MANAGE_BILLING') ? cabinetPath('/billing?status=OPEN') : undefined} />
             <Stat icon={<UserRoundCheck size={19} />} label={L('Taux d’absence (30 j)')} value={`${Math.round(data.noShowRate * 100)} %`} />
             <Stat icon={<UserPlus size={19} />} label={L('Nouveaux patients')} value={data.newPatients} hint={L('ce mois')} to={cabinetPath('/patients')} />

@@ -167,3 +167,12 @@
   .print-page { box-shadow: none !important; border: 0 !important; margin: 0 !important; max-width: none !important; padding: 0 !important; }
   @page { size: A4; margin: 16mm; }
 }
+
+/* ─── Public booking pages (/rdv): small celebrations ─── */
+@keyframes rdv-pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes rdv-confetti { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; } }
+@keyframes rdv-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.rdv-pop { animation: rdv-pop 0.55s cubic-bezier(.2,.9,.3,1.3) both; }
+.rdv-confetti { position: absolute; left: 50%; top: 50%; width: 9px; height: 14px; border-radius: 3px; animation: rdv-confetti 1.3s ease-out forwards; }
+.rdv-float { animation: rdv-float 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .rdv-pop, .rdv-confetti, .rdv-float { animation: none; } .rdv-confetti { display: none; } }

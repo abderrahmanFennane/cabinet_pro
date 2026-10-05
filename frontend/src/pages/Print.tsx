@@ -10,6 +10,7 @@ import { insuranceText } from '../lib/insurance'
 import { Cabinet, Invoice, MedicalDocument, Patient, Prescription, Quote } from '../types'
 import { Button } from '../components/ui/button'
 import { LinesTable } from '../components/billing/BillingDetails'
+import { translateText } from '../lib/labels'
 
 function useCabinet() {
   const cabinetId = useCabinetId()
@@ -28,10 +29,10 @@ export function PrintPage({ ready, children, signature, cabinet: given, autoPrin
     const id = setTimeout(() => window.print(), 400)
     return () => clearTimeout(id)
   }, [ready, cabinet, autoPrint])
-  if (!ready || !cabinet) return <p className="p-10 text-center text-sm text-muted-foreground">Préparation du document…</p>
+  if (!ready || !cabinet) return <p className="p-10 text-center text-sm text-muted-foreground">{translateText('Préparation du document…')}</p>
   return (
     <div className="min-h-screen bg-muted py-6 print:bg-white print:py-0">
-      <div className="no-print mx-auto mb-4 flex max-w-[210mm] justify-end px-4"><Button onClick={() => window.print()}><Printer size={16} className="me-1.5" />Imprimer / PDF</Button></div>
+      <div className="no-print mx-auto mb-4 flex max-w-[210mm] justify-end px-4"><Button onClick={() => window.print()}><Printer size={16} className="me-1.5" />{translateText('Imprimer / PDF')}</Button></div>
       <article className="print-page mx-auto flex min-h-[270mm] max-w-[210mm] flex-col bg-white p-[16mm] text-[13px] leading-relaxed text-black shadow-lg">
         <header className="flex items-start justify-between gap-6 border-b-2 border-[#12705A] pb-4">
           <div>

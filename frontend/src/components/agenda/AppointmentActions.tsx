@@ -73,6 +73,7 @@ export default function AppointmentActions({ appointment, onClose, onEdit }: Pro
           <DialogDescription>{formatDateTimeFR(a.date)} · {a.durationMinutes} min · {practitionerName(a.practitioner)}</DialogDescription>
         </DialogHeader>
         <p className="text-sm"><span className="text-muted-foreground">{L('Statut :')} </span><b>{t(`appointmentStatus.${a.status}`)}</b>{a.reason ? <><span className="text-muted-foreground"> {L('· Motif :')} </span>{a.reason}</> : null}</p>
+        {a.comment && <p className="rounded-xl bg-[#FFF8EE] px-3 py-2 text-sm"><span className="font-semibold text-[#B8661B]">{L('Commentaire du patient')} : </span><span className="whitespace-pre-line">{a.comment}</span></p>}
         {!!NEXT[a.status]?.length && (
           <div className="flex flex-wrap gap-2">
             {NEXT[a.status]!.map(s => (

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/utils'
 import { Dentition, ToothState, ToothStateCode } from '../../types'
 import ToothGlyph, { toothWidth } from './ToothGlyph'
+import { translateText } from '../../lib/labels'
 
 // FDI notation, drawn as the practitioner sees the patient (patient's right on the left of the screen).
 const Q = (quadrant: number, count: number) => Array.from({ length: count }, (_, i) => quadrant * 10 + i + 1)
@@ -42,7 +43,7 @@ export default function Odontogram({ dentition, states, plannedTeeth, selected =
     const code = (state?.state || 'HEALTHY') as ToothStateCode
     const faces = state?.faces?.replace(/,/g, '')
     const isSelected = selected.includes(n)
-    const label = `Dent ${n} — ${t(`toothState.${code}`)}${faces ? ` (${faces})` : ''}${planned.has(n) ? ' — acte planifié' : ''}`
+    const label = `${translateText('Dent')} ${n} — ${t(`toothState.${code}`)}${faces ? ` (${faces})` : ''}${planned.has(n) ? ` — ${translateText('acte planifié')}` : ''}`
     const number = (
       <span className={cn('font-mono text-[0.68rem] font-semibold leading-none', isSelected ? 'text-primary' : 'text-[#8A9A94]')}>
         {n}{faces && <span className="block pt-0.5 text-center text-[0.58rem] text-[#5A6B65]">{faces}</span>}
@@ -102,7 +103,7 @@ export default function Odontogram({ dentition, states, plannedTeeth, selected =
         <div className="overflow-x-auto pb-1">
           <div className="min-w-[640px] space-y-1">
             <div className="flex justify-between text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-[#5A6B65]">
-              <span>Haut droit</span><span>Haut gauche</span>
+              <span>{translateText('Haut droit')}</span><span>{translateText('Haut gauche')}</span>
             </div>
             {showPermanent && arch(PERMANENT.upperRight, PERMANENT.upperLeft, true)}
             {showPrimary && arch(PRIMARY.upperRight, PRIMARY.upperLeft, true, true)}
@@ -110,7 +111,7 @@ export default function Odontogram({ dentition, states, plannedTeeth, selected =
             {showPrimary && arch(PRIMARY.lowerRight, PRIMARY.lowerLeft, false, true)}
             {showPermanent && arch(PERMANENT.lowerRight, PERMANENT.lowerLeft, false)}
             <div className="flex justify-between pt-1 text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-[#5A6B65]">
-              <span>Bas droit</span><span>Bas gauche</span>
+              <span>{translateText('Bas droit')}</span><span>{translateText('Bas gauche')}</span>
             </div>
           </div>
         </div>
@@ -127,7 +128,7 @@ export default function Odontogram({ dentition, states, plannedTeeth, selected =
               onClick={() => setQuadrant(q.key)}
               className={cn('min-h-[44px] rounded-lg px-1 text-xs font-semibold', quadrant === q.key ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground')}
             >
-              {q.label}
+              {translateText(q.label)}
             </button>
           ))}
         </div>
@@ -164,7 +165,7 @@ export function OdontogramLegend() {
         </span>
       ))}
       <span className="inline-flex items-center gap-1.5">
-        <i className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" /> Acte planifié
+        <i className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" /> {translateText('Acte planifié')}
       </span>
     </div>
   )

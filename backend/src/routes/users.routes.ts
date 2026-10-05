@@ -18,6 +18,8 @@ const router = Router();
 router.use(authenticate);
 
 const TEAM_ROLES = ['PRACTITIONER', 'ASSISTANT'] as const;
+/** Languages a doctor can show on their public page. */
+export const LANGUAGES = ['ar', 'fr', 'en', 'es', 'amz'] as const;
 
 const baseFields = {
   email: z.string().trim().email('Email invalide'),
@@ -29,6 +31,11 @@ const baseFields = {
   phone: z.string().trim().nullable().optional(),
   specialty: z.enum(SPECIALTIES).nullable().optional(),
   seesAllPatients: z.boolean().optional(),
+  // Public page of the doctor (online booking)
+  avatar: z.string().trim().max(500).regex(/^(https?:\/\/[^/]+)?\/uploads\/avatars\//, 'Photo non valide').nullable().optional(),
+  bio: z.string().trim().max(1500).nullable().optional(),
+  languages: z.array(z.enum(LANGUAGES)).max(LANGUAGES.length).transform(list => list.join(',') || null).optional(),
+  consultationFee: z.number().int().min(0).max(100000).nullable().optional(),
 };
 
 const createSchema = z.object({ ...baseFields, role: z.enum(['SUPER_ADMIN', 'OWNER', 'PRACTITIONER', 'ASSISTANT']).default('ASSISTANT'), cabinetId: z.string().optional() });
@@ -40,6 +47,7 @@ const serialize = (user: any) => ({
   id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, title: user.title, inpe: user.inpe, phone: user.phone,
   avatar: user.avatar, role: user.role, specialty: user.specialty, seesAllPatients: user.seesAllPatients, cabinetId: user.cabinetId,
   isActive: user.isActive, mfaEnabled: !!user.totpEnabledAt, createdAt: user.createdAt, cabinet: user.cabinet || null,
+  bio: user.bio, languages: String(user.languages || '').split(',').filter(Boolean), consultationFee: user.consultationFee,
 });
 
 const isOwner = (req: Request) => req.user!.role === 'OWNER' && req.user!.permissions?.includes('MANAGE_TEAM');
@@ -111,6 +119,17 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       });
     });
     sendSuccess(res, serialize(user), 'Utilisateur créé', undefined, 201);
+  } catch (err) { next(err); }
+});
+
+/** One account: the user themselves, their cabinet's owner, or the Super Admin (same rule as editing it). */
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = await prisma.user.findFirst({ where: { id: req.params.id, deletedAt: null }, include: userInclude });
+    if (!user) throw new AppError('Utilisateur non trouvé', 404);
+    const allowed = req.user!.role === 'SUPER_ADMIN' || user.id === req.user!.id || (isOwner(req) && user.cabinetId === req.user!.cabinetId);
+    if (!allowed) throw new AppError('Accès non autorisé', 403);
+    sendSuccess(res, serialize(user));
   } catch (err) { next(err); }
 });
 

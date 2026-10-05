@@ -36,6 +36,10 @@ const PlatformHome = lazy(pages.PlatformHome)
 const PrintQuote = lazy(() => pages.Print().then(m => ({ default: m.PrintQuote })))
 const Landing = lazy(pages.Landing)
 const TrialRequests = lazy(pages.TrialRequests)
+const BookingHome = lazy(() => pages.Booking().then(m => ({ default: m.BookingHome })))
+const BookingList = lazy(() => pages.Booking().then(m => ({ default: m.BookingList })))
+const BookingCabinetPage = lazy(() => pages.Booking().then(m => ({ default: m.BookingCabinetPage })))
+const DoctorPage = lazy(pages.DoctorPage)
 
 import { useAuth, useCabinetId } from '../lib/hooks'
 import { Role } from '../types'
@@ -95,6 +99,13 @@ export default function AppRouter() {
       {/* Document sent to a patient by link: public, protected by the patient's date of birth */}
       <Route path="/d/:token" element={<SharedDocument />} />
       <Route path="/403" element={<PermissionDenied />} />
+      {/* Online booking by patients, no account: specialties, cabinets of a specialty, then a cabinet's free slots */}
+      <Route path="/rdv" element={<BookingHome />} />
+      <Route path="/rdv/:specialty" element={<BookingList />} />
+      <Route path="/rdv/:specialty/:cabinet" element={<BookingCabinetPage />} />
+      {/* A doctor's public page, and its booking page */}
+      <Route path="/rdv/:specialty/:cabinet/:doctor" element={<DoctorPage />} />
+      <Route path="/rdv/:specialty/:cabinet/:doctor/reserver" element={<DoctorPage />} />
 
       {/* Printable documents, outside the app shell */}
       <Route path="/print/prescription/:patientId/:id" element={inCabinet(<PrintPrescription />)} />

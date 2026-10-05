@@ -5,6 +5,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { authenticate, requirePermissions, requireRoles } from '../middleware/auth';
 import { sendError, sendSuccess } from '../utils/response';
+import { AppError } from '../middleware/error';
 
 const router = express.Router();
 
@@ -32,20 +33,25 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml'];
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    // Doctors' photos are shown on public pages: no SVG (it can carry scripts).
+    const allowedTypes = req.params.kind === 'avatars' ? ['image/jpeg', 'image/png', 'image/webp'] : ['image/jpeg', 'image/png', 'image/svg+xml'];
 
     if (allowedTypes.includes(file.mimetype)) return cb(null, true);
-    cb(new Error('Format image non supporté. Utilisez JPG, PNG ou SVG.'));
+    cb(new AppError(req.params.kind === 'avatars' ? 'Format non supporté. Utilisez une photo JPG ou PNG.' : 'Format image non supporté. Utilisez JPG, PNG ou SVG.', 400));
   },
 });
 
 router.post(
   '/:kind',
   authenticate,
-  requireRoles('OWNER', 'SUPER_ADMIN'),
+  requireRoles('OWNER', 'PRACTITIONER', 'SUPER_ADMIN'),
   (req, res, next) => {
     const kind = String(req.params.kind || '').trim();
+    // Photo of a doctor for their public booking page (any doctor, the owner or the Super Admin).
+    if (kind === 'avatars') return next();
+    if (req.user?.role === 'PRACTITIONER') return res.status(403).json({ error: 'Permissions insuffisantes' });
     if (kind === 'logos') {
       if (req.user?.role !== 'OWNER') return res.status(403).json({ error: 'Permissions insuffisantes' });
       return requirePermissions('MANAGE_SETTINGS')(req, res, next);

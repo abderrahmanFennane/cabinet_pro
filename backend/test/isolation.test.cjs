@@ -159,3 +159,60 @@ test('signing out everywhere and deactivation end existing sessions', async (t) 
   assert.equal((await call('POST', '/auth/logout-all', before)).status, 200);
   assert.equal((await me(before)).status, 401, 'session encore valide après déconnexion générale');
 });
+
+test('online booking: a patient books a free slot, without seeing anything of the clinic', async (t) => {
+  if (skip) return t.skip(skip);
+  const allDays = Object.fromEntries(['0', '1', '2', '3', '4', '5', '6'].map(d => [d, ['09:00-12:00']]));
+  const on = await call('PATCH', `/cabinets/${ctx.a.cabinet.id}`, ctx.a.ownerToken, { bookingEnabled: true, bookingHours: allDays, bookingSlotMinutes: 30 });
+  assert.equal(on.status, 200, on.text);
+  const slug = JSON.parse(on.text).data.bookingSlug;
+  assert.equal(slug, 'cabinet-a');
+  refused(await call('PATCH', `/cabinets/${ctx.b.cabinet.id}`, ctx.a.ownerToken, { bookingEnabled: true }), 'activer la réservation du cabinet B');
+
+  // Only clinics that switched it on are listed; clinic B is not reachable.
+  const list = await call('GET', '/public/booking/cabinets?specialty=DENTISTRY');
+  assert.ok(list.text.includes('cabinet-a') && !list.text.includes('Cabinet b'), list.text.slice(0, 200));
+  assert.equal((await call('GET', '/public/booking/cabinets/cabinet-b')).status, 404);
+
+  // Each doctor has a public page; it shows the profile, never the account's private fields.
+  assert.equal((await call('PATCH', `/users/${ctx.a.owner.id}`, ctx.a.ownerToken, { bio: 'Dentiste à Rabat', languages: ['ar', 'fr'], consultationFee: 300 })).status, 200);
+  const page = await call('GET', `/public/booking/cabinets/${slug}/doctors/owner-a`);
+  assert.equal(page.status, 200, page.text);
+  const doctor = JSON.parse(page.text).data.doctor;
+  assert.equal(doctor.consultationFee, 300);
+  assert.deepEqual(doctor.languages, ['ar', 'fr']);
+  assert.ok(!/owner\.a@test\.ma|password|totp|inpe/i.test(page.text), 'champs privés du compte sur la page publique');
+  assert.equal((await call('GET', `/public/booking/cabinets/${slug}/doctors/inconnu`)).status, 404);
+  assert.equal((await call('PATCH', `/users/${ctx.a.owner.id}`, ctx.a.ownerToken, { avatar: 'https://evil.example/x.png' })).status, 400, 'photo externe acceptée');
+
+  const slots = await call('GET', `/public/booking/cabinets/${slug}/slots?doctorId=${ctx.a.owner.id}&days=7`);
+  const days = JSON.parse(slots.text).data.days;
+  const day = days.find(d => d.times.length >= 2);
+  assert.ok(day, 'aucun créneau libre');
+  const [first] = day.times;
+  assert.match(first.time, /^09:00$/);
+
+  const body = { doctorId: ctx.a.owner.id, date: first.at, firstName: 'Nadia', lastName: 'Online', phone: '0612345678', reason: 'Autre motif', comment: 'Douleur au genou depuis une semaine', consent: true };
+  const url = `/public/booking/cabinets/${slug}/appointments`;
+  assert.equal((await call('POST', url, null, { ...body, website: 'robot' })).status, 400, 'pot de miel ignoré');
+  const booked = await call('POST', url, null, body);
+  assert.equal(booked.status, 201, booked.text);
+  assert.ok(!/secret allergy|diagnosis|Patient a/.test(booked.text), 'données du cabinet dans la réponse publique');
+  assert.equal((await call('POST', url, null, body)).status, 409, 'créneau réservé deux fois');
+  const offGrid = new Date(new Date(first.at).getTime() + 10 * 60_000).toISOString();
+  assert.equal((await call('POST', url, null, { ...body, date: offGrid })).status, 409, 'heure hors grille acceptée');
+
+  // The cabinet sees it "to confirm"; the slot is no longer offered.
+  const pending = await call('GET', `/cabinets/${ctx.a.cabinet.id}/appointments/online-requests`, ctx.a.ownerToken);
+  assert.ok(pending.text.includes('ONLINE') && pending.text.includes('Nadia'), pending.text.slice(0, 200));
+  assert.ok(pending.text.includes('Douleur au genou depuis une semaine'), 'commentaire du patient absent');
+  // The patient's comment can hold health details: stored encrypted.
+  const { PrismaClient } = require('@prisma/client');
+  const raw = new PrismaClient({ datasources: { db: { url: base } } });
+  try {
+    const row = await raw.appointment.findFirst({ where: { source: 'ONLINE', cabinetId: ctx.a.cabinet.id } });
+    assert.match(row.comment, /^enc:v1:/);
+  } finally { await raw.$disconnect(); }
+  const again = JSON.parse((await call('GET', `/public/booking/cabinets/${slug}/slots?doctorId=${ctx.a.owner.id}&from=${day.day}&days=1`)).text).data.days[0];
+  assert.ok(!again.times.some(s => s.at === first.at), 'créneau pris encore proposé');
+});

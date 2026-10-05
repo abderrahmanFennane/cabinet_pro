@@ -24,6 +24,7 @@ import { publicShare } from './routes/share.routes';
 import diagnosisCodesRoutes from './routes/diagnosis-codes.routes';
 import platformRoutes from './routes/platform.routes';
 import trialRequestsRoutes, { publicTrialRequests } from './routes/trial-requests.routes';
+import bookingRoutes from './routes/booking.routes';
 import { sendSuccess } from './utils/response';
 import { rateLimit } from './utils/rate-limit';
 
@@ -74,6 +75,8 @@ app.use('/api/share', publicShare);
 // Trial request form of the public home page (no account), and its list for the Super Admin
 app.use('/api/public/trial-requests', publicTrialRequests);
 app.use('/api/trial-requests', trialRequestsRoutes);
+// Online booking by patients (/rdv/<specialty>), no account
+app.use('/api/public/booking', bookingRoutes);
 app.use('/api/users', usersRoutes);
 // Cabinet records first (list, settings, subscription), then the cabinet's data under /:cabinetId/...
 app.use('/api/cabinets', cabinetsRoutes);

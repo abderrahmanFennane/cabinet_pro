@@ -17,10 +17,11 @@ import { Badge } from '../components/ui/badge'
 import { NativeSelect } from '../components/ui/native-select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { RemindersCard } from '../components/settings/RemindersCard'
+import { OnlineBookingCard } from '../components/settings/OnlineBookingCard'
 import { TOOTH_STATE_CODES } from '../components/dental/Odontogram'
 import { useL } from '../lib/labels'
 
-type Tab = 'cabinet' | 'acts' | 'reminders' | 'privacy'
+type Tab = 'cabinet' | 'acts' | 'booking' | 'reminders' | 'privacy'
 
 const LEADS = [{ value: 1440, label: 'La veille (24 h avant)' }, { value: 120, label: '2 h avant' }, { value: 60, label: '1 h avant' }]
 
@@ -282,10 +283,10 @@ export default function Settings() {
   const cabinetId = useCabinetId()
   const [searchParams] = useSearchParams()
   const asked = searchParams.get('tab') as Tab | null
-  const [tab, setTab] = useState<Tab>(asked && ['cabinet', 'acts', 'reminders', 'privacy'].includes(asked) ? asked : 'cabinet')
+  const [tab, setTab] = useState<Tab>(asked && ['cabinet', 'acts', 'booking', 'reminders', 'privacy'].includes(asked) ? asked : 'cabinet')
   const { data: cabinet } = useQuery({ queryKey: ['cabinet', cabinetId], queryFn: async () => (await api.get(`/cabinets/${cabinetId}`)).data.data as Cabinet, enabled: !!cabinetId })
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'cabinet', label: L('Cabinet') }, { key: 'acts', label: L('Actes et tarifs') }, { key: 'reminders', label: L('Rappels') }, { key: 'privacy', label: L('Confidentialité') },
+    { key: 'cabinet', label: L('Cabinet') }, { key: 'acts', label: L('Actes et tarifs') }, { key: 'booking', label: L('Rendez-vous en ligne') }, { key: 'reminders', label: L('Rappels') }, { key: 'privacy', label: L('Confidentialité') },
   ]
   return (
     <div className="space-y-5">
@@ -295,6 +296,7 @@ export default function Settings() {
       </div>
       {cabinet && tab === 'cabinet' && <CabinetInfo cabinet={cabinet} />}
       {cabinet && tab === 'acts' && <ActsCatalogue cabinet={cabinet} />}
+      {cabinet && tab === 'booking' && <OnlineBookingCard cabinet={cabinet} />}
       {cabinet && tab === 'reminders' && <div className="space-y-4"><ReminderLeads cabinet={cabinet} /><RemindersCard cabinet={cabinet} /></div>}
       {cabinet && tab === 'privacy' && <Privacy />}
     </div>

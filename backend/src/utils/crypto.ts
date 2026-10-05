@@ -56,6 +56,7 @@ export function decryptDeep<T>(value: T): T {
 /** Fields stored encrypted, per model. Medical content only: names, phone and CIN stay searchable. */
 export const ENCRYPTED_FIELDS: Record<string, string[]> = {
   Patient: ['medicalHistory', 'surgicalHistory', 'familyHistory', 'currentTreatments', 'allergies', 'notes'],
+  Appointment: ['comment'],
   Consultation: ['reason', 'examination', 'vitals', 'diagnosis', 'plan', 'notes'],
   ConsultationRevision: ['content'],
   Prescription: ['items', 'notes'],

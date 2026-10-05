@@ -12,9 +12,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { toast } from '../components/ui/toast'
 import LanguageSwitcher from '../components/layout/LanguageSwitcher'
-import { ToothMark } from '../components/layout/Sidebar'
-import ToothGlyph from '../components/dental/ToothGlyph'
-import { ToothStateCode } from '../types'
+import { BrandMark, SpecialtyArt } from '../components/brand'
 import { useL } from '../lib/labels'
 
 type LoginForm = { email: string; password: string }
@@ -22,7 +20,6 @@ type RegisterForm = { cabinetName: string; specialty: string; firstName: string;
 type Mode = 'login' | 'register' | 'forgot' | 'reset' | 'mfa-setup' | 'mfa-verify' | 'mfa-codes'
 const TRIAL_DAYS = 3
 // A few teeth from a real-looking chart: what the product is about, at a glance.
-const SAMPLE: [number, ToothStateCode][] = [[34, 'HEALTHY'], [35, 'CARIES'], [36, 'FILLED'], [37, 'CROWN'], [38, 'HEALTHY']]
 
 export default function Login() {
   const L = useL()
@@ -176,7 +173,7 @@ export default function Login() {
     <div className="grid min-h-[100dvh] w-full bg-[#F2F5F3] lg:grid-cols-[1.05fr_1fr]">
       <aside className="hidden flex-col justify-between border-e border-[#D8E1DD] bg-white p-12 lg:flex">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><ToothMark size={22} /></span>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><BrandMark size={22} /></span>
           <span className="text-xl font-extrabold">{L('Cabinet Pro')}</span>
         </div>
 
@@ -184,13 +181,8 @@ export default function Login() {
           <p className="text-[0.78rem] font-bold uppercase tracking-[0.08em] text-primary">{t('login.eyebrow')}</p>
           <h1 className="text-[2.6rem] font-extrabold leading-[1.08] text-[#14231E]">{t('auth.headline')}</h1>
           <p className="text-lg text-[#5A6B65]">{t('auth.description')}</p>
-          <div className="flex max-w-xs items-start gap-1 pt-3" dir="ltr" aria-hidden="true">
-            {SAMPLE.map(([tooth, state]) => (
-              <div key={tooth} className="relative flex-1">
-                <ToothGlyph tooth={tooth} state={state} className="h-auto w-full" />
-                {tooth === 35 && <span className="absolute end-0 top-0 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-white" />}
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-2 pt-3" aria-hidden="true">
+            {['GENERAL', 'DENTISTRY', 'PEDIATRICS', 'GYNECOLOGY', 'OPHTHALMOLOGY', 'CARDIOLOGY', 'DERMATOLOGY', 'PHYSIOTHERAPY', 'PSYCHIATRY'].map(sp => <SpecialtyArt key={sp} specialty={sp} size="md" />)}
           </div>
         </div>
 
@@ -205,7 +197,7 @@ export default function Login() {
         <div className="absolute end-4 top-4 w-24 sm:end-8 sm:top-6"><LanguageSwitcher compact /></div>
         <div className="w-full max-w-[400px] space-y-6">
           <div className="space-y-1.5">
-            <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white lg:hidden"><ToothMark size={24} /></span>
+            <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white lg:hidden"><BrandMark size={24} /></span>
             <h2 className="text-[1.75rem] font-extrabold leading-tight">{titles[mode]}</h2>
             {mode === 'login' && <p className="text-[#5A6B65]">{t('auth.subtitle')}</p>}
             {mode === 'forgot' && <p className="text-[#5A6B65]">{t('login.forgotHint')}</p>}

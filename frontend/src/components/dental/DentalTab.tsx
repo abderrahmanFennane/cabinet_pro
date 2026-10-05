@@ -13,7 +13,7 @@ import Odontogram, { OdontogramLegend } from './Odontogram'
 import ToothSheet from './ToothSheet'
 import ActDialog from './ActDialog'
 import TreatmentPlans from './TreatmentPlans'
-import { useL } from '../../lib/labels'
+import { useL, translateText } from '../../lib/labels'
 
 const DENTITIONS: Dentition[] = ['PRIMARY', 'MIXED', 'PERMANENT']
 
@@ -126,7 +126,7 @@ export default function DentalTab({ patient, currency }: { patient: Patient; cur
       {/* Phone: the tooth sheet slides up from the bottom */}
       <Dialog open={sheetTooth !== null && !isDesktop} onOpenChange={(open) => { if (!open) { setSheetTooth(null); setSelected([]) } }}>
         <DialogContent className="lg:hidden">
-          <DialogTitle className="sr-only">Dent {sheetTooth}</DialogTitle>
+          <DialogTitle className="sr-only">{translateText('Dent')} {sheetTooth}</DialogTitle>
           {sheet}
         </DialogContent>
       </Dialog>

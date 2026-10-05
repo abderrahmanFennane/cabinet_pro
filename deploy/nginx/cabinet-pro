@@ -59,7 +59,7 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    listen 443 ssl; # managed by Certbot
+    listen 443 ssl http2; # managed by Certbot (http2: files load in parallel on one connection)
     ssl_certificate /etc/letsencrypt/live/cabinet.geriny.com/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/cabinet.geriny.com/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
@@ -88,6 +88,14 @@ server {
     proxy_connect_timeout 5s;
     proxy_read_timeout 60s;     # exports and PDF can take a few seconds
     proxy_send_timeout 60s;
+
+    # Online booking by patients (/rdv): browsing days and times makes many small requests.
+    # Bookings themselves are limited by the app (6 per hour per visitor, 2 upcoming per phone).
+    location /api/public/booking/ {
+        limit_req zone=cp_api burst=30 nodelay;
+        client_max_body_size 20k;
+        proxy_pass http://127.0.0.1:4001;
+    }
 
     # Public trial request form: a person sends it once or twice.
     location /api/public/ {
@@ -123,7 +131,7 @@ server {
         proxy_pass http://127.0.0.1:4001;
     }
 
-    listen 443 ssl; # managed by Certbot
+    listen 443 ssl http2; # managed by Certbot (http2: files load in parallel on one connection)
     ssl_certificate /etc/letsencrypt/live/cabinet.geriny.com/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/cabinet.geriny.com/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot

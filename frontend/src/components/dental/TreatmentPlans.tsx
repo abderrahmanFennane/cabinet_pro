@@ -14,7 +14,7 @@ import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { QuoteDialog, quoteTone } from '../billing/BillingDetails'
-import { useL } from '../../lib/labels'
+import { useL, translateText } from '../../lib/labels'
 
 type Props = {
   base: string
@@ -91,7 +91,7 @@ export default function TreatmentPlans({ base, cabinetApi, patientId, plans, cur
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge variant={planTone(plan.status)}>{t(`planStatus.${plan.status}`)}</Badge>
-                {plan.quote && <Badge variant={quoteTone(plan.quote.status)}>Devis {plan.quote.number} · {t(`quoteStatus.${plan.quote.status}`)}</Badge>}
+                {plan.quote && <Badge variant={quoteTone(plan.quote.status)}>{translateText('Devis')} {plan.quote.number} · {t(`quoteStatus.${plan.quote.status}`)}</Badge>}
               </div>
             </header>
             {plan.notes && <p className="text-sm text-muted-foreground">{plan.notes}</p>}

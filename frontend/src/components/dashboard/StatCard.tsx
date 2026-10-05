@@ -3,6 +3,7 @@ import { cn, formatCurrency } from '../../lib/utils'
 import { Badge } from '../ui/badge'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { tones, Tone } from '../../lib/tones'
+import { translateText } from '../../lib/labels'
 
 interface StatCardProps {
   icon: ReactNode
@@ -57,7 +58,7 @@ export function StatCard({
         <span>
           {isSame ? 'Stable' : `${isUp ? '+' : ''}${delta.toFixed(1)}%`}
         </span>
-        <span className="text-[10px] opacity-80">vs hier</span>
+        <span className="text-[10px] opacity-80">{translateText('vs hier')}</span>
       </Badge>
     )
   }

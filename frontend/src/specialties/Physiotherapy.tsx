@@ -6,7 +6,7 @@ import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { ClinicalRecord, today, useRecords } from './records'
 import { COLORS, Empty, Field, RecordMeta, Section, Trend } from './ui'
-import { useL } from '../lib/labels'
+import { useL, translateText } from '../lib/labels'
 
 type Program = { indication: string; sessionsPrescribed: number; prescriber?: string | null; goals?: string | null; status: 'ONGOING' | 'DONE' | 'STOPPED' }
 type Session = { programId: string; pain?: number | null; exercises?: string | null; notes?: string | null }
@@ -26,7 +26,7 @@ function ProgramCard({ program, sessions, save, remove }: { program: ClinicalRec
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[1.1rem] font-extrabold">{p.indication}</p>
-          <p className="text-[0.88rem] text-[#5A6B65]">Depuis le {formatDateFR(program.date)}{p.prescriber ? ` · prescrit par ${p.prescriber}` : ''}{!ongoing ? ` · ${p.status === 'DONE' ? 'terminé' : 'arrêté'}` : ''}</p>
+          <p className="text-[0.88rem] text-[#5A6B65]">{translateText('Depuis le')} {formatDateFR(program.date)}{p.prescriber ? ` · prescrit par ${p.prescriber}` : ''}{!ongoing ? ` · ${p.status === 'DONE' ? 'terminé' : 'arrêté'}` : ''}</p>
           {p.goals && <p className="mt-1 text-[0.9rem]">Objectifs : {p.goals}</p>}
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -54,7 +54,7 @@ function ProgramCard({ program, sessions, save, remove }: { program: ClinicalRec
           </div>
           <div className="space-y-1.5 sm:col-span-2"><Label htmlFor={`ps-ex-${program.id}`}>{L('Exercices et techniques')}</Label><Textarea id={`ps-ex-${program.id}`} rows={2} value={form.exercises} onChange={e => setForm(f => ({ ...f, exercises: e.target.value }))} /></div>
           <Field id={`ps-n-${program.id}`} label={L('Observations')} className="sm:col-span-2" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} />
-          <Button type="submit" className="sm:col-span-2" disabled={save.isPending}>Enregistrer la séance {done + 1}</Button>
+          <Button type="submit" className="sm:col-span-2" disabled={save.isPending}>{translateText('Enregistrer la séance')} {done + 1}</Button>
         </form>
       )}
 
@@ -65,7 +65,7 @@ function ProgramCard({ program, sessions, save, remove }: { program: ClinicalRec
           {sessions.map((s, i) => (
             <li key={s.id} className="grid gap-0.5 rounded-xl border border-[#E3EAE7] p-3 text-[0.9rem]">
               <RecordMeta record={s} onDelete={() => remove.mutate(s.id)} />
-              <p><b>Séance {sessions.length - i}</b>{s.data.pain !== null && s.data.pain !== undefined && <> {L('· EVA')} <b className={painTone(s.data.pain)}>{s.data.pain}/10</b></>}</p>
+              <p><b>{translateText('Séance')} {sessions.length - i}</b>{s.data.pain !== null && s.data.pain !== undefined && <> {L('· EVA')} <b className={painTone(s.data.pain)}>{s.data.pain}/10</b></>}</p>
               {s.data.exercises && <p>{s.data.exercises}</p>}
               {s.data.notes && <p className="text-[#5A6B65]">{s.data.notes}</p>}
             </li>

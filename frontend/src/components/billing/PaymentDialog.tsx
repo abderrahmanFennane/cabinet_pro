@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-import { useL } from '../../lib/labels'
+import { useL, translateText } from '../../lib/labels'
 
 const METHODS: PaymentMethod[] = ['CASH', 'CARD', 'TRANSFER', 'CHECK']
 
@@ -85,7 +85,7 @@ export default function PaymentDialog({ open, onOpenChange, cabinetApi, patientI
               <Input id="reference" value={reference} onChange={e => setReference(e.target.value)} />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={!valid || pay.isPending}>Enregistrer {valid ? formatCurrency(value, currency) : ''}</Button>
+          <Button type="submit" className="w-full" disabled={!valid || pay.isPending}>{translateText('Enregistrer')} {valid ? formatCurrency(value, currency) : ''}</Button>
         </form>
       </DialogContent>
     </Dialog>

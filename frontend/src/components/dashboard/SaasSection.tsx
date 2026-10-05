@@ -14,10 +14,11 @@ import { Skeleton } from '../ui/skeleton'
 import { SubscriptionDialog, SubscriptionTarget } from '../SubscriptionDialog'
 import { whatsappLink } from '../../pages/SubscriptionBlocked'
 
-const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+/** "oct.", "Oct", "أكتوبر": short month name in the interface language. */
+const monthLabel = (month: string, lang: string) => new Intl.DateTimeFormat(lang.startsWith('ar') ? 'ar-MA' : lang.startsWith('en') ? 'en-GB' : 'fr-FR', { month: 'short', timeZone: 'UTC' }).format(new Date(`${month}-01T00:00:00Z`))
 
 export function SaasSection() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [managed, setManaged] = useState<SubscriptionTarget | null>(null)
   const { data, isLoading } = useQuery({
@@ -76,7 +77,7 @@ export function SaasSection() {
     )
   }
 
-  const chartData = data.revenueByMonth.map(point => ({ ...point, label: MONTHS[Number(point.month.slice(5, 7)) - 1] }))
+  const chartData = data.revenueByMonth.map(point => ({ ...point, label: monthLabel(point.month, i18n.language) }))
 
   return (
     <section className="space-y-5">

@@ -12,6 +12,7 @@ import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/button'
 import { whatsappLink } from './SubscriptionBlocked'
 import { postToGateway } from '../lib/gateway'
+import { translateText } from '../lib/labels'
 
 type Plan = {
   id: string
@@ -111,7 +112,7 @@ export default function Plans() {
               <h2 className="text-[1.08rem] font-bold">{t('sub.contactTitle', { plan: contactFor.name })}</h2>
               <p className="mt-1 text-[0.95rem] text-[#3F514A]">{t('sub.contactText')}</p>
             </div>
-            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => setContactFor(null)} aria-label="Fermer"><X size={17} /></Button>
+            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => setContactFor(null)} aria-label={translateText('Fermer')}><X size={17} /></Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {whatsapp && <Button asChild><a href={`${whatsappLink(whatsapp)}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"><MessageCircle size={16} className="me-1.5" />WhatsApp</a></Button>}

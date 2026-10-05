@@ -7,14 +7,7 @@ import { getInitials } from '../ui/avatar'
 import { Button } from '../ui/button'
 import { cn } from '../../lib/utils'
 import { useNavBadges, useNavigation } from './navigation'
-
-export function ToothMark({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M7.5 3C5 3 3.5 5 3.5 7.6c0 2.8 1.4 4.3 1.9 6.9.5 2.8 1 6.5 2.6 6.5 1.9 0 1.6-4.6 4-4.6s2.1 4.6 4 4.6c1.6 0 2.1-3.7 2.6-6.5.5-2.6 1.9-4.1 1.9-6.9C20.5 5 19 3 16.5 3c-2 0-2.8 1-4.5 1S9.5 3 7.5 3z" />
-    </svg>
-  )
-}
+import { BrandMark, SpecialtyArt } from '../brand'
 
 /** Desktop menu: a short list of places, what this role can do, and who is signed in. */
 export default function Sidebar() {
@@ -33,7 +26,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed start-0 top-0 z-30 hidden h-[100dvh] w-60 flex-col gap-5 overflow-y-auto border-e border-[#D8E1DD] bg-white px-3.5 py-5 lg:flex">
       <div className="flex items-center gap-2.5 px-2">
-        <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-primary text-white"><ToothMark /></span>
+        <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-primary text-white"><BrandMark /></span>
         <div className="min-w-0">
           <b className="block text-[1.02rem] font-extrabold leading-tight">Cabinet Pro</b>
           <small className="block truncate text-[0.78rem] text-[#5A6B65]">{superAdmin && !cabinetId ? t('platform.label') : user.cabinet?.name || ''}</small>
@@ -74,12 +67,17 @@ export default function Sidebar() {
       </div>
 
       <div className="flex items-center gap-2.5 px-1.5">
-        <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#E9EFEC] text-[0.8rem] font-bold text-primary">
-          {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full rounded-full object-cover" /> : getInitials(user.firstName, user.lastName)}
-        </span>
+        {/* Photo if there is one; otherwise a doctor gets the picture of their profession, the others their initials. */}
+        {!user.avatar && user.specialty && user.role !== Role.ASSISTANT && user.role !== Role.SUPER_ADMIN
+          ? <SpecialtyArt specialty={user.specialty} label={t(`specialty.${user.specialty}`)} />
+          : (
+            <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#E9EFEC] text-[0.8rem] font-bold text-primary">
+              {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full rounded-full object-cover" /> : getInitials(user.firstName, user.lastName)}
+            </span>
+          )}
         <NavLink to="/account" className="min-w-0 flex-1 rounded-lg hover:text-primary" title={t('account.menu')}>
           <b className="block truncate text-[0.88rem] leading-tight">{user.title ? `${user.title} ` : ''}{user.firstName} {user.lastName}</b>
-          <small className="text-[0.78rem] text-[#5A6B65]">{t(`roles.${user.role}`)}</small>
+          <small className="block truncate text-[0.78rem] text-[#5A6B65]">{user.specialty && user.role !== Role.ASSISTANT && user.role !== Role.SUPER_ADMIN ? t(`specialty.${user.specialty}`) : t(`roles.${user.role}`)}</small>
         </NavLink>
         <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-[#5A6B65] hover:text-[#B8372C]" onClick={logout} aria-label={t('nav.logout')} title={t('nav.logout')}>
           <LogOut size={17} className="rtl:rotate-180" />

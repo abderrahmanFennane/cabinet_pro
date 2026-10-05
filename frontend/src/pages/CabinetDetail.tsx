@@ -14,10 +14,11 @@ import { Label } from '../components/ui/label'
 import { NativeSelect } from '../components/ui/native-select'
 import { SubscriptionDialog } from '../components/SubscriptionDialog'
 import Users from './Users'
-import { useL } from '../lib/labels'
+import { OnlineBookingCard } from '../components/settings/OnlineBookingCard'
+import { useL, translateText } from '../lib/labels'
 
 const SPECIALTIES: Specialty[] = ['DENTISTRY', 'GENERAL', 'PEDIATRICS', 'GYNECOLOGY', 'OPHTHALMOLOGY', 'CARDIOLOGY', 'DERMATOLOGY', 'PHYSIOTHERAPY', 'PSYCHIATRY']
-type Tab = 'team' | 'infos' | 'subscription'
+type Tab = 'team' | 'booking' | 'infos' | 'subscription'
 type History = { id: string; plan: string; status: string; startedAt: string; periodEnd: string | null; createdAt: string }
 const STATUS: Record<string, [string, string]> = {
   ACTIVE: ['Actif', 'bg-[#DFF1E6] text-[#1E7A45]'],
@@ -115,13 +116,14 @@ export default function CabinetDetail() {
       </header>
 
       <div role="tablist" className="flex gap-1 overflow-x-auto border-b border-[#D8E1DD]">
-        {([['team', L('Équipe')], ['infos', L('Informations')], ['subscription', L('Abonnement')]] as [Tab, string][]).map(([key, label]) => (
+        {([['team', L('Équipe')], ['booking', L('Rendez-vous en ligne')], ['infos', L('Informations')], ['subscription', L('Abonnement')]] as [Tab, string][]).map(([key, label]) => (
           <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
             className={cn('-mb-px shrink-0 whitespace-nowrap border-b-[2.5px] px-3.5 py-2.5 font-semibold', tab === key ? 'border-primary text-[#14231E]' : 'border-transparent text-[#5A6B65] hover:text-[#14231E]')}>{label}</button>
         ))}
       </div>
 
       {tab === 'team' && <Users cabinetId={cabinet.id} embedded />}
+      {tab === 'booking' && <OnlineBookingCard cabinet={cabinet} />}
 
       {tab === 'infos' && (
         <form className="grid gap-4 rounded-[14px] border border-[#D8E1DD] bg-white p-[18px] sm:grid-cols-2" onSubmit={e => { e.preventDefault(); save.mutate() }}>
@@ -150,7 +152,7 @@ export default function CabinetDetail() {
           <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[#D8E1DD] bg-white p-[18px]">
             <div>
               <span className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[#5A6B65]">{L('Abonnement actuel')}</span>
-              <p className="mt-1 flex flex-wrap items-center gap-2.5 text-[1.2rem] font-extrabold">Plan {cabinet.plan} {!cabinet.isDemo && <Pill status={status} />}</p>
+              <p className="mt-1 flex flex-wrap items-center gap-2.5 text-[1.2rem] font-extrabold">{translateText('Plan')} {cabinet.plan} {!cabinet.isDemo && <Pill status={status} />}</p>
               <p className="text-[#5A6B65]">{end ? `${L('Jusqu’au')} ${formatDateFR(end)}` : L('Sans échéance')} · {cabinet.maxPractitioners} {L('praticien(s)')} · {(cabinet.maxAssistants ?? 0) >= 999 ? L('assistants illimités') : `${cabinet.maxAssistants} assistant(s)`}</p>
             </div>
             {!cabinet.isDemo && <Button onClick={() => setManaging(true)}><CalendarClock size={16} className="me-1.5" />{L('Changer, prolonger ou encaisser')}</Button>}

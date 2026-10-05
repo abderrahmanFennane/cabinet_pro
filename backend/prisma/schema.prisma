@@ -23,6 +23,10 @@ model User {
   avatar          String?
   role            String    @default("ASSISTANT")
   specialty       String? // practitioners only: DENTISTRY, GENERAL...
+  // Public page of the doctor (/rdv/...): presentation, spoken languages (comma-separated codes), consultation fee in MAD
+  bio             String?   @db.Text
+  languages       String?
+  consultationFee Int?
   // Collaborator setting: see every patient of the cabinet, or only their own.
   seesAllPatients Boolean   @default(false)
   isActive        Boolean   @default(true)
@@ -77,6 +81,14 @@ model Cabinet {
   reminderChannel     String    @default("BOTH")
   // Reminder delays, in minutes before the appointment (defaults: day before and one hour before).
   reminderLeadMinutes String    @default("1440,60")
+  // Online booking (public pages /rdv/<specialty>/<bookingSlug>)
+  bookingEnabled      Boolean   @default(false)
+  bookingSlug         String?   @unique
+  // JSON: opening hours per weekday (0 = Sunday), e.g. {"1":["09:00-13:00","15:00-19:00"]}
+  bookingHours        String?   @db.Text
+  bookingSlotMinutes  Int       @default(30)
+  // true: online bookings are confirmed at once; false: the assistant confirms them
+  bookingAutoConfirm  Boolean   @default(false)
   // First-steps guide closed by the owner
   setupGuideHiddenAt  DateTime?
   invoiceSeq          Int       @default(0)
@@ -348,9 +360,13 @@ model Appointment {
   durationMinutes    Int       @default(30)
   type               String    @default("CONSULTATION")
   reason             String?
+  // Written by the patient when booking online ("Autre" reason or details); encrypted
+  comment            String?   @db.Text
   // PLANNED, CONFIRMED, ARRIVED, IN_CONSULTATION, DONE, CANCELLED, NO_SHOW
   status             String    @default("PLANNED")
   walkIn             Boolean   @default(false)
+  // CABINET (typed by the staff) or ONLINE (booked by the patient on the public page)
+  source             String    @default("CABINET")
   arrivedAt          DateTime?
   startedAt          DateTime?
   completedAt        DateTime?

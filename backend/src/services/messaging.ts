@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import { normalizePhone } from '../utils/phone';
 
 export type MessageChannel = 'SMS' | 'WHATSAPP';
-export type MessageKind = 'APPOINTMENT_REMINDER' | 'PLAN_EXPIRY' | 'OWNER_MESSAGE' | 'WELCOME' | 'TEST' | 'PASSWORD_RESET' | 'PAYMENT_REMINDER' | 'DOCUMENT';
+export type MessageKind = 'APPOINTMENT_REMINDER' | 'PLAN_EXPIRY' | 'OWNER_MESSAGE' | 'WELCOME' | 'TEST' | 'PASSWORD_RESET' | 'PAYMENT_REMINDER' | 'DOCUMENT' | 'ONLINE_BOOKING';
 
 /** Messages to patients that count against the cabinet's monthly allowance (plan). */
 export const PATIENT_MESSAGE_KINDS: MessageKind[] = ['APPOINTMENT_REMINDER', 'PAYMENT_REMINDER', 'DOCUMENT'];

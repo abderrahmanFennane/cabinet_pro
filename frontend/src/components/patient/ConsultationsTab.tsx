@@ -211,8 +211,8 @@ export default function ConsultationsTab({ patient, appointmentId }: { patient: 
               {!isLocked && (
                 <div className="flex flex-wrap gap-1.5" aria-label={t('consultForm.frequentReasons')}>
                   {profile.reasons.map(r => (
-                    <button key={r} type="button" onClick={() => setDraft(d => ({ ...d, reason: d.reason && !d.reason.includes(r) ? `${d.reason}, ${r.toLowerCase()}` : r }))}
-                      className="rounded-full border border-[#D8E1DD] bg-white px-2.5 py-1 text-[0.8rem] hover:border-primary hover:text-primary">{r}</button>
+                    <button key={r} type="button" onClick={() => setDraft(d => ({ ...d, reason: d.reason && !d.reason.includes(L(r)) ? `${d.reason}, ${L(r).toLowerCase()}` : L(r) }))}
+                      className="rounded-full border border-[#D8E1DD] bg-white px-2.5 py-1 text-[0.8rem] hover:border-primary hover:text-primary">{L(r)}</button>
                   ))}
                 </div>
               )}
@@ -229,10 +229,10 @@ export default function ConsultationsTab({ patient, appointmentId }: { patient: 
               </div>
             </fieldset>}
             <div className="space-y-1.5">
-              <Label htmlFor="c-exam">{profile.examLabel || L('Examen clinique')}</Label>
+              <Label htmlFor="c-exam">{profile.examLabel ? L(profile.examLabel) : L('Examen clinique')}</Label>
               {!isLocked && (
                 <div className="flex flex-wrap gap-1.5" aria-label={t('consultForm.examHeadings')}>
-                  {profile.exam.map(h => <button key={h} type="button" onClick={() => addExamHeading(h)} className="rounded-lg bg-[#F2F5F3] px-2 py-1 text-[0.78rem] font-semibold text-[#3F514A] hover:bg-[#DCEEE7] hover:text-primary">+ {h}</button>)}
+                  {profile.exam.map(h => <button key={h} type="button" onClick={() => addExamHeading(L(h))} className="rounded-lg bg-[#F2F5F3] px-2 py-1 text-[0.78rem] font-semibold text-[#3F514A] hover:bg-[#DCEEE7] hover:text-primary">+ {L(h)}</button>)}
                 </div>
               )}
               <Textarea id="c-exam" rows={4} value={draft.examination} onChange={e => setDraft(d => ({ ...d, examination: e.target.value }))} />
@@ -243,7 +243,7 @@ export default function ConsultationsTab({ patient, appointmentId }: { patient: 
                 <DiagnosisCodePicker value={draft.diagnosisCode} onPick={c => setDraft(d => ({ ...d, diagnosisCode: c?.code || '', diagnosis: d.diagnosis || c?.label || '' }))} />
               </div>
             </div>
-            <div className="space-y-1.5"><Label htmlFor="c-plan">{profile.planLabel || L('Conduite à tenir')}</Label><Textarea id="c-plan" rows={2} value={draft.plan} onChange={e => setDraft(d => ({ ...d, plan: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label htmlFor="c-plan">{profile.planLabel ? L(profile.planLabel) : L('Conduite à tenir')}</Label><Textarea id="c-plan" rows={2} value={draft.plan} onChange={e => setDraft(d => ({ ...d, plan: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label htmlFor="c-notes">{L('Notes')}</Label><Textarea id="c-notes" rows={2} value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></div>
             {isLocked && <div className="space-y-1.5"><Label htmlFor="c-corr">{L('Motif de la correction')}</Label><Input id="c-corr" value={draft.correctionReason} onChange={e => setDraft(d => ({ ...d, correctionReason: e.target.value }))} required minLength={3} /></div>}
             <div className="flex flex-wrap justify-end gap-2 pt-2">

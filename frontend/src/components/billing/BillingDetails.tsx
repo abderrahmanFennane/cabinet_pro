@@ -14,7 +14,7 @@ import { Badge } from '../ui/badge'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import PaymentDialog from './PaymentDialog'
-import { useL } from '../../lib/labels'
+import { useL, translateText } from '../../lib/labels'
 
 export const invoiceTone = (status: string) => (status === 'PAID' ? 'success' : status === 'PARTIAL' ? 'warning' : status === 'CANCELLED' ? 'secondary' : 'destructive') as any
 export const quoteTone = (status: string) => (status === 'ACCEPTED' ? 'success' : status === 'REJECTED' ? 'destructive' : status === 'SENT' ? 'warning' : 'secondary') as any
@@ -64,7 +64,7 @@ export function InvoiceDialog({ id, onClose, cabinetApi, currency }: DetailProps
         {!invoice ? <p className="py-8 text-center text-sm text-muted-foreground">{L('Chargement…')}</p> : (
           <>
             <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">Facture {invoice.number} <Badge variant={invoiceTone(invoice.status)}>{t(`invoiceStatus.${invoice.status}`)}</Badge></DialogTitle>
+              <DialogTitle className="flex flex-wrap items-center gap-2">{translateText('Facture')} {invoice.number} <Badge variant={invoiceTone(invoice.status)}>{t(`invoiceStatus.${invoice.status}`)}</Badge></DialogTitle>
               <DialogDescription>{invoice.patient.firstName} {invoice.patient.lastName} · {formatDateFR(invoice.date)}</DialogDescription>
             </DialogHeader>
             <LinesTable items={invoice.items || []} currency={currency} />
@@ -129,7 +129,7 @@ export function QuoteDialog({ id, onClose, cabinetApi, currency }: DetailProps) 
         {!quote ? <p className="py-8 text-center text-sm text-muted-foreground">{L('Chargement…')}</p> : (
           <>
             <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">Devis {quote.number} <Badge variant={quoteTone(quote.status)}>{t(`quoteStatus.${quote.status}`)}</Badge></DialogTitle>
+              <DialogTitle className="flex flex-wrap items-center gap-2">{translateText('Devis')} {quote.number} <Badge variant={quoteTone(quote.status)}>{t(`quoteStatus.${quote.status}`)}</Badge></DialogTitle>
               <DialogDescription>
                 {quote.patient.firstName} {quote.patient.lastName} · {formatDateFR(quote.date)}{quote.validUntil ? ` · ${L('valable jusqu’au')} ${formatDateFR(quote.validUntil)}` : ''}
                 {quote.treatmentPlan ? ` · ${L('plan')} « ${quote.treatmentPlan.title} »` : ''}

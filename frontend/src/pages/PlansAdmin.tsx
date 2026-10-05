@@ -27,7 +27,7 @@ import { PERMISSIONS, PERMISSIONS_BY_MODULE, PERMISSION_LABELS, type PermissionK
 import { useTranslation } from 'react-i18next'
 import { EmptyState, PageHeader } from '../components/layout/PageHeader'
 import { toneAt } from '../lib/tones'
-import { useL } from '../lib/labels'
+import { useL, translateText } from '../lib/labels'
 
 type Plan = {
   id: string
@@ -180,7 +180,7 @@ export default function PlansAdmin() {
     const key: [PermissionKey, string][] = [['DENTAL_TREATMENT_PLAN', L('Plans de traitement')], ['ADVANCED_STATS', L('Stats avancées')], ['MULTI_SPECIALTY', L('Multi-spécialités')]]
     return (
       <div className="grid gap-1 text-[0.82rem]">
-        <span className="text-[#5A6B65]">{perms.length} / {PERMISSIONS.length} fonctions</span>
+        <span className="text-[#5A6B65]">{perms.length} / {PERMISSIONS.length} {L('fonctions')}</span>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {key.map(([k, label]) => (
             <span key={k} className={perms.includes(k) ? 'text-[#1E7A45]' : 'text-[#8A9A94] line-through'}>{perms.includes(k) ? '✓' : '✕'} {label}</span>
@@ -228,7 +228,7 @@ export default function PlansAdmin() {
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-white text-xs font-bold shadow-[0_10px_20px_-14px_rgba(18,112,90,0.7)] ${toneAt(index).chip}`}>{plan.code.slice(0, 3)}</span>
                   <div className="min-w-0">
                     <p className="truncate font-bold text-[#14231E]">{plan.name}</p>
-                    <p className="text-sm font-semibold text-primary">{formatPrice(plan.monthlyPrice)} MAD <span className="font-normal text-[#5A6B65]">· {plan.durationMonths} mois</span></p>
+                    <p className="text-sm font-semibold text-primary">{formatPrice(plan.monthlyPrice)} MAD <span className="font-normal text-[#5A6B65]">· {plan.durationMonths} {translateText('mois')}</span></p>
                   </div>
                 </div>
                 <DropdownMenu>
@@ -293,7 +293,7 @@ export default function PlansAdmin() {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm font-semibold text-primary">{formatPrice(plan.monthlyPrice)} MAD</div>
-                    <div className="text-xs text-muted-foreground">{plan.durationMonths} mois</div>
+                    <div className="text-xs text-muted-foreground">{plan.durationMonths} {translateText('mois')}</div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={plan.isActive ? 'success' : 'destructive'}>{plan.isActive ? t('common.active') : t('common.inactive')}</Badge>
@@ -333,7 +333,7 @@ export default function PlansAdmin() {
               {!plans.isLoading && (plans.data || []).length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                    Aucun plan.
+                    {L('Aucun plan.')}
                   </TableCell>
                 </TableRow>
               )}
@@ -381,7 +381,7 @@ export default function PlansAdmin() {
                 {Object.entries(PERMISSIONS_BY_MODULE).map(([module, perms], idx) => (
                   <div key={module}>
                     {idx > 0 && <Separator className="my-3" />}
-                    <div className="text-xs font-semibold uppercase tracking-wide text-[#12705A]">{module}</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[#12705A]">{L(module)}</div>
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {perms.map(p => (
                         <label key={p.key} className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-xl bg-white px-2.5 py-1.5 text-sm text-[#14231E]">
@@ -391,7 +391,7 @@ export default function PlansAdmin() {
                             onChange={() => togglePermission(p.key)}
                             className="h-4 w-4 rounded border-border accent-primary focus:ring-2 focus:ring-ring focus:ring-offset-2"
                           />
-                          <span>{p.label}</span>
+                          <span>{L(p.label)}</span>
                         </label>
                       ))}
                     </div>
@@ -425,7 +425,7 @@ export default function PlansAdmin() {
               <CardHeader><CardTitle className="text-base">{L('Tarif')}</CardTitle></CardHeader>
               <CardContent className="text-sm text-foreground">
                 <div>{formatPrice(viewing?.monthlyPrice)} MAD</div>
-                <div className="text-muted-foreground">{viewing?.durationMonths} mois</div>
+                <div className="text-muted-foreground">{viewing?.durationMonths} {translateText('mois')}</div>
               </CardContent>
             </Card>
             <Card>
@@ -448,7 +448,7 @@ export default function PlansAdmin() {
                     <span className="text-sm text-muted-foreground">{L('Aucune')}</span>
                   )}
                   {(viewing?.permissions || []).map(p => (
-                    <Badge key={p} variant="secondary">{PERMISSION_LABELS[p] || p}</Badge>
+                    <Badge key={p} variant="secondary">{PERMISSION_LABELS[p] ? L(PERMISSION_LABELS[p]) : p}</Badge>
                   ))}
                 </div>
               </CardContent>

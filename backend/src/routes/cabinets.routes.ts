@@ -9,6 +9,7 @@ import { copyDefaultActs, planQuotas } from '../services/cabinet-setup';
 import { SPECIALTIES } from '../types/permissions';
 import { resetDemoCabinet } from '../services/demo';
 import { writeAuditLog } from '../utils/audit';
+import { doctorSlugs, HOURS_RANGE, parseHours, uniqueSlug } from '../services/booking';
 
 // Cabinet records: the Super Admin manages every cabinet (F-SA-01); the owner reads and edits their own settings.
 const router = Router();
@@ -52,6 +53,11 @@ const settingsSchema = z.object({
   remindersEnabled: z.boolean().optional(),
   reminderChannel: z.enum(['WHATSAPP', 'SMS', 'BOTH']).optional(),
   reminderLeadMinutes: z.array(z.number().int().min(15).max(7 * 24 * 60)).max(3).optional(),
+  bookingEnabled: z.boolean().optional(),
+  bookingSlug: z.string().trim().toLowerCase().regex(/^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])$/, 'Adresse : lettres, chiffres et tirets (3 à 50)').optional(),
+  bookingHours: z.record(z.enum(['0', '1', '2', '3', '4', '5', '6']), z.array(z.string().regex(HOURS_RANGE, 'Horaire non valide (ex. 09:00-13:00)')).max(3)).optional(),
+  bookingSlotMinutes: z.number().int().refine(n => [10, 15, 20, 30, 45, 60].includes(n), 'Durée non valide').optional(),
+  bookingAutoConfirm: z.boolean().optional(),
 });
 
 const subscriptionSchema = z.object({
@@ -87,6 +93,11 @@ const serialize = (cabinet: any) => ({
   remindersEnabled: cabinet.remindersEnabled,
   reminderChannel: cabinet.reminderChannel,
   reminderLeadMinutes: String(cabinet.reminderLeadMinutes || '').split(',').filter(Boolean).map(Number),
+  bookingEnabled: cabinet.bookingEnabled,
+  bookingSlug: cabinet.bookingSlug,
+  bookingHours: parseHours(cabinet.bookingHours),
+  bookingSlotMinutes: cabinet.bookingSlotMinutes,
+  bookingAutoConfirm: cabinet.bookingAutoConfirm,
   createdAt: cabinet.createdAt,
   updatedAt: cabinet.updatedAt,
   _count: cabinet._count,
@@ -250,15 +261,61 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+/** Online booking pages of the cabinet and of each doctor (owner's settings, Super Admin's cabinet page). */
+router.get('/:id/booking-links', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    assertOwnCabinet(req, req.params.id);
+    const cabinet = await prisma.cabinet.findFirst({
+      where: { id: req.params.id, deletedAt: null },
+      select: {
+        specialty: true, bookingEnabled: true, bookingSlug: true,
+        // Each doctor sees only their own link; the Super Admin sees every doctor's.
+        users: { where: { role: { in: ['OWNER', 'PRACTITIONER'] }, isActive: true, deletedAt: null, ...(req.user!.role === 'SUPER_ADMIN' ? {} : { id: req.user!.id }) }, select: { id: true, title: true, firstName: true, lastName: true, specialty: true, avatar: true }, orderBy: { lastName: 'asc' } },
+      },
+    });
+    if (!cabinet) throw new AppError('Cabinet non trouvé', 404);
+    // Addresses are computed over every doctor of the cabinet (two doctors with the same name get distinct ones).
+    const all = req.user!.role === 'SUPER_ADMIN' ? cabinet.users : await prisma.user.findMany({
+      where: { cabinetId: req.params.id, role: { in: ['OWNER', 'PRACTITIONER'] }, isActive: true, deletedAt: null }, select: { id: true, title: true, firstName: true, lastName: true },
+    });
+    const slugs = doctorSlugs(all);
+    sendSuccess(res, {
+      enabled: cabinet.bookingEnabled, slug: cabinet.bookingSlug, specialty: cabinet.specialty,
+      doctors: cabinet.users.map(u => ({ ...u, specialty: u.specialty || cabinet.specialty, slug: slugs.get(u.id) })),
+    });
+  } catch (err) { next(err); }
+});
+
 router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     assertOwnCabinet(req, req.params.id);
     if (req.user!.role !== 'SUPER_ADMIN' && !req.user!.permissions?.includes('MANAGE_SETTINGS')) throw new AppError('Permission refusée', 403);
-    const { reminderLeadMinutes, ...data } = settingsSchema.parse(req.body);
+    const { reminderLeadMinutes, bookingHours, ...data } = settingsSchema.parse(req.body);
     const extra = req.user!.role === 'SUPER_ADMIN' ? z.object({ specialty: z.enum(SPECIALTIES).optional() }).parse(req.body) : {};
+    // Online booking address: chosen by the owner, or made from the cabinet's name when booking is first switched on.
+    if (data.bookingSlug) {
+      const taken = await prisma.cabinet.findFirst({ where: { bookingSlug: data.bookingSlug, id: { not: req.params.id } }, select: { id: true } });
+      if (taken) throw new AppError('Cette adresse est déjà prise par un autre cabinet', 409);
+    } else if (data.bookingEnabled) {
+      const current = await prisma.cabinet.findUnique({ where: { id: req.params.id }, select: { name: true, bookingSlug: true } });
+      if (current && !current.bookingSlug) data.bookingSlug = await uniqueSlug(current.name, req.params.id);
+    }
+    if (bookingHours) for (const ranges of Object.values(bookingHours)) {
+      for (const range of ranges) if (range.slice(0, 5) >= range.slice(6)) throw new AppError(`Horaire ${range} : la fin doit être après le début`, 400);
+      // Ranges of the same day must not overlap (the same slot would be offered twice).
+      const sorted = [...ranges].sort();
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].slice(0, 5) < sorted[i - 1].slice(6)) throw new AppError(`Horaires ${sorted[i - 1]} et ${sorted[i]} : les plages se chevauchent`, 400);
+      }
+      ranges.sort();
+    }
     const cabinet = await prisma.cabinet.update({
       where: { id: req.params.id },
-      data: { ...data, ...extra, reminderLeadMinutes: reminderLeadMinutes ? [...new Set(reminderLeadMinutes)].sort((a, b) => b - a).join(',') : undefined },
+      data: {
+        ...data, ...extra,
+        reminderLeadMinutes: reminderLeadMinutes ? [...new Set(reminderLeadMinutes)].sort((a, b) => b - a).join(',') : undefined,
+        bookingHours: bookingHours ? JSON.stringify(bookingHours) : undefined,
+      },
       include: counts,
     });
     sendSuccess(res, serialize(cabinet), 'Cabinet mis à jour');

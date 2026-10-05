@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { KeyRound, LogOut, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { Globe, KeyRound, LogOut, ShieldCheck, ShieldAlert } from 'lucide-react'
 import api from '../lib/api'
 import { apiError, useAuth } from '../lib/hooks'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -9,10 +9,14 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { toast } from '../components/ui/toast'
+import { DoctorProfileForm } from '../components/settings/DoctorProfileForm'
+import { useL } from '../lib/labels'
+import { Role } from '../types'
 
 /** The signed-in user's own account: password, two-step login status, sign out everywhere. */
 export default function Account() {
   const { t } = useTranslation()
+  const L = useL()
   const { user, startSession, logout } = useAuth()
   const [current, setCurrent] = useState('')
   const [password, setPassword] = useState('')
@@ -46,6 +50,16 @@ export default function Account() {
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <PageHeader title={t('account.title')} subtitle={`${user.firstName} ${user.lastName} · ${user.email}`} />
+
+      {(user.role === Role.OWNER || user.role === Role.PRACTITIONER) && (
+        <Card>
+          <CardContent className="space-y-3 p-5 sm:p-6">
+            <h2 className="flex items-center gap-2 text-base font-bold"><Globe size={18} className="text-primary" />{L('Ma page publique')}</h2>
+            <p className="text-sm text-muted-foreground">{L('Ce que les patients voient avant de prendre rendez-vous en ligne avec vous.')}</p>
+            <DoctorProfileForm userId={user.id} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="space-y-3 p-5 sm:p-6">

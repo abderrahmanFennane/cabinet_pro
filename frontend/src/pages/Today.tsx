@@ -14,10 +14,12 @@ import SetupGuide from '../components/layout/SetupGuide'
 import { Button } from '../components/ui/button'
 import AppointmentDialog from '../components/agenda/AppointmentDialog'
 import WalkInDialog from '../components/agenda/WalkInDialog'
+import OnlineRequests from '../components/agenda/OnlineRequests'
 import { useAppointmentStatus } from '../components/agenda/AppointmentActions'
 import ChargeForm from '../components/billing/ChargeForm'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { useL } from '../lib/labels'
+import { SpecialtyArt } from '../components/brand'
 
 export const STATUS_PILL: Record<AppointmentStatus, string> = {
   PLANNED: 'bg-[#E9EFEC] text-[#5A6B65]',
@@ -133,8 +135,9 @@ export default function Today() {
       <div className="min-w-0">
         <b className="block truncate font-semibold">{patientLabel(a)}</b>
         <span className="block truncate text-[0.86rem] text-[#5A6B65]">
-          {[a.walkIn ? t('appointment.walkIn') : null, a.reason, showDoctor ? practitionerName(a.practitioner) : null, a.waitingMinutes ? t('today.waited', { time: duration(a.waitingMinutes) }) : null].filter(Boolean).join(' · ')}
+          {[a.walkIn ? t('appointment.walkIn') : null, a.source === 'ONLINE' ? L('En ligne') : null, a.reason, showDoctor ? practitionerName(a.practitioner) : null, a.waitingMinutes ? t('today.waited', { time: duration(a.waitingMinutes) }) : null].filter(Boolean).join(' · ')}
         </span>
+        {a.comment && <span className="block truncate text-[0.84rem] italic text-[#B8661B]" title={a.comment}>« {a.comment} »</span>}
       </div>
       <div className="col-span-2 flex flex-wrap items-center gap-2.5 sm:col-span-1 sm:justify-end">
         <StatusPill status={a.status} />{action(a)}
@@ -190,6 +193,7 @@ export default function Today() {
     return (
       <div className="grid gap-5">
         <PageHeader title={t('nav.today')} subtitle={<span>{dayLabel} · {t('today.inRoom', { count: room.length })} · {t('today.toCome', { count: toCome })}</span>} actions={addButtons} />
+        <OnlineRequests showDoctor={practitioners.length > 1} />
         <div className="grid items-start gap-[18px] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {section(t('today.schedule'), list, true, t('today.noAppointments'),
             practitioners.length > 1 ? chips([['all', t('today.allDoctors')], ...practitioners.map(p => [p.id, practitionerName(p)] as [string, string])]) : undefined)}
@@ -209,11 +213,14 @@ export default function Today() {
   return (
     <div className="grid gap-5">
       <PageHeader
+        media={user?.specialty ? <SpecialtyArt specialty={user.specialty} size="lg" label={t(`specialty.${user.specialty}`)} /> : undefined}
+        eyebrow={user?.specialty ? t(`specialty.${user.specialty}`) : undefined}
         title={t('today.hello', { name: `${user?.title ? `${user.title} ` : ''}${user?.lastName || ''}` })}
         subtitle={<span>{dayLabel} · {t('today.onList', { count: mine.length })}</span>}
         actions={user?.role === Role.OWNER ? addButtons : undefined}
       />
       <SetupGuide />
+      <OnlineRequests showDoctor={user?.role === Role.OWNER && practitioners.length > 1} />
 
       {current ? (
         <section className="grid gap-3.5 rounded-[18px] bg-primary px-6 py-[22px] text-white">
@@ -258,7 +265,7 @@ export default function Today() {
       )}
 
       {user?.role === Role.OWNER && practitioners.length > 1
-        ? section(t('today.schedule'), list, filter !== 'me', t('today.noAppointments'), chips([['me', 'Moi'], ['all', t('today.allDoctors')]]))
+        ? section(t('today.schedule'), list, filter !== 'me', t('today.noAppointments'), chips([['me', L('Moi')], ['all', t('today.allDoctors')]]))
         : section(t('today.mySchedule'), mine, false, t('today.noAppointments'))}
       {dialogs}
     </div>

@@ -27,4 +27,6 @@ export const pages = {
   PlatformHome: () => import('../pages/PlatformHome'),
   Landing: () => import('../pages/Landing'),
   TrialRequests: () => import('../pages/TrialRequests'),
+  Booking: () => import('../pages/Booking'),
+  DoctorPage: () => import('../pages/DoctorPage'),
 }

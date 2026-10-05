@@ -11,14 +11,17 @@ interface PageHeaderProps {
   actions?: ReactNode
   onBack?: () => void
   className?: string
+  /** Picture shown left of the title (e.g. the doctor's specialty). */
+  media?: ReactNode
 }
 
 // Page title block: plain title, one line of context, actions on the right.
-export function PageHeader({ title, subtitle, eyebrow, actions, onBack, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, eyebrow, actions, onBack, className, media }: PageHeaderProps) {
   const { t } = useTranslation()
   return (
     <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between', className)}>
-      <div className="flex min-w-0 items-start">
+      <div className="flex min-w-0 items-center gap-4">
+        {media}
         <div className="min-w-0">
           {onBack && (
             <button

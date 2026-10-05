@@ -117,6 +117,15 @@ router.get('/waiting-room', async (req: Request, res: Response, next: NextFuncti
   } catch (err) { next(err); }
 });
 
+/** Upcoming appointments booked online by patients and not confirmed yet ("À confirmer" on the day screen). */
+router.get('/online-requests', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const where: any = { cabinetId: req.params.cabinetId, deletedAt: null, source: 'ONLINE', status: 'PLANNED', date: { gte: new Date(Date.now() - 3600_000) } };
+    if (ownAgendaOnly(req)) where.practitionerId = req.user!.id;
+    sendSuccess(res, await prisma.appointment.findMany({ where, include, orderBy: { date: 'asc' }, take: 100 }));
+  } catch (err) { next(err); }
+});
+
 // ─── Holidays and absences ───
 
 router.get('/absences', async (req: Request, res: Response, next: NextFunction) => {

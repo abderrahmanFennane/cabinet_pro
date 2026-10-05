@@ -3,7 +3,7 @@ import { Check, Copy, MessageCircle } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 import { Button } from './ui/button'
 import { whatsappLink } from '../pages/SubscriptionBlocked'
-import { useL } from '../lib/labels'
+import { useL, translateText } from '../lib/labels'
 
 // No 0/O, 1/l/I: the password is often read aloud or typed from a phone.
 const LETTERS = 'abcdefghjkmnpqrstuvwxyz'
@@ -42,7 +42,7 @@ export default function CredentialsDialog({ credentials, onClose }: { credential
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Identifiants de {credentials.name}</DialogTitle>
+          <DialogTitle>{translateText('Identifiants de')} {credentials.name}</DialogTitle>
           <DialogDescription>{L('Transmettez-les maintenant : le mot de passe ne sera plus affiché.')}</DialogDescription>
         </DialogHeader>
         <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-2 rounded-xl bg-[#F2F5F3] p-4 text-[0.95rem]">

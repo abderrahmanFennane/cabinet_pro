@@ -148,6 +148,12 @@ export interface Cabinet {
   remindersEnabled?: boolean
   reminderChannel?: string
   reminderLeadMinutes?: number[]
+  bookingEnabled?: boolean
+  bookingSlug?: string | null
+  /** Opening hours per weekday (0 = Sunday): ["09:00-13:00", "15:00-19:00"] */
+  bookingHours?: Record<string, string[]>
+  bookingSlotMinutes?: number
+  bookingAutoConfirm?: boolean
   supportAccess?: { expiresAt: string; readOnly: boolean } | null
   _count?: { users: number; patients: number }
   createdAt: string
@@ -229,8 +235,12 @@ export interface Appointment {
   /** Same id on every occurrence of a recurring appointment */
   seriesId?: string | null
   reason: string | null
+  /** Written by the patient when booking online */
+  comment?: string | null
   status: AppointmentStatus
   walkIn: boolean
+  /** CABINET or ONLINE (booked by the patient on the public page) */
+  source?: 'CABINET' | 'ONLINE'
   arrivedAt: string | null
   startedAt: string | null
   completedAt: string | null

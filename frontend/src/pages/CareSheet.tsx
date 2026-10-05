@@ -12,7 +12,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { NativeSelect } from '../components/ui/native-select'
-import { useL } from '../lib/labels'
+import { translateText, useL } from '../lib/labels'
 
 /**
  * CNSS "feuille de soins maladie" (doctor's part), pre-filled from the invoice, the patient and the doctor.
@@ -270,7 +270,7 @@ function OfficialPreview({ sheet, layout, adjusting, onMove }: { sheet: Sheet; l
     <div ref={box} className="relative mx-auto aspect-[210/297] w-full max-w-[640px] select-none bg-white shadow-lg"
       // 10 pt text on a 210 mm page = 1.68 % of the page width, whatever the preview size.
       style={{ backgroundImage: 'linear-gradient(#E9EFEC 1px, transparent 1px), linear-gradient(90deg, #E9EFEC 1px, transparent 1px)', backgroundSize: `${(10 / 210) * 100}% ${(10 / 297) * 100}%`, containerType: 'inline-size' } as React.CSSProperties}>
-      <span className="absolute end-2 top-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8A9A94]">Aperçu · quadrillage 1 cm</span>
+      <span className="absolute end-2 top-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8A9A94]">{translateText('Aperçu · quadrillage 1 cm')}</span>
       {(Object.keys(values) as FieldKey[]).map(key => handle(key, values[key] || ''))}
       {sheet.lines.map((line, row) => COLUMNS.map(([key, field]) => handle(key, line[field], row)))}
     </div>

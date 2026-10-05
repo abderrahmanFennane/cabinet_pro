@@ -11,7 +11,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { NativeSelect } from '../ui/native-select'
-import { useL } from '../../lib/labels'
+import { useL, translateText } from '../../lib/labels'
 
 const FACES: Face[] = ['M', 'D', 'O', 'I', 'V', 'L', 'P']
 
@@ -130,7 +130,7 @@ export default function ActDialog({ open, onOpenChange, cabinetApi, base, patien
             <div className="space-y-1.5">
               <Label htmlFor="quadrant">{L('Quadrant')}</Label>
               <NativeSelect id="quadrant" value={quadrant} onChange={e => setQuadrant(Number(e.target.value))}>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(q => <option key={q} value={q}>Quadrant {q}</option>)}
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(q => <option key={q} value={q}>{translateText('Quadrant')} {q}</option>)}
               </NativeSelect>
             </div>
           )}
